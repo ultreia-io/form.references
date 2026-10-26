@@ -4,15 +4,16 @@ Version: 0.0.0.9000
 Authors@R:
     person("Tony", "Chemit", role = c("aut", "cre"),
            email = "dev@tchemit.fr")
-Description: Provides the package foundation for downloading and caching
-    reference data required by form models. Reference catalogues describe
-    download locations, versions and checksums for verifying local copies.
+Description: Downloads and caches reference tables required by form models.
+    Verifies catalogue and data checksums before updating local files,
+    preserves textual codes, and supports authenticated sources and offline use.
 License: LGPL-2.1
 URL: https://ultreia-io.github.io/form.references/,
     https://github.com/ultreia-io/form.references
 BugReports: https://github.com/ultreia-io/form.references/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
+Imports: curl, digest, yaml, stats, utils
 Suggests: knitr, rmarkdown, testthat (>= 3.0.0)
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
