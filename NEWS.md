@@ -1,3 +1,5 @@
-# form.references 0.0.0.9000
+# form.references 0.1.0
 
-* Initialize the package structure, documentation, CI and release workflows.
+* Retrieve a form model's code lists and registry tables from checksum-verified catalogues.
+* Reuse verified downloads offline and fetch missing tables concurrently, including from private sources.
+* Publish a complete survey example with downloadable code lists and registry tables.

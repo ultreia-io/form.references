@@ -7,10 +7,111 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-`form.references` will download and cache the reference data required by form models.
+The survey model declares the code lists `stations` and `observers` and the registry `contacts`.
+The public example catalogues use those exact lowercase IDs.
 
-The package skeleton is ready; the download API is not implemented yet.
+## Load the required references
 
-The planned workflow reads a catalogue, resolves model references and verifies downloaded files before caching them.
+This complete example uses installed files, so it runs without internet access.
 
-Code-list and registry locations, model mappings and authentication belong to the calling application.
+```{r}
+library(form.references)
+model <- form.model::load_form_model(
+  "survey", system.file("examples", package = "form.model")
+)
+cache <- tempfile("survey-cache-")
+source <- reference_source(
+  system.file("examples", package = "form.references"), cache
+)
+references <- get_form_code_lists(model, source)
+references$data$stations
+references$data$observers
+registry_source <- reference_source(
+  system.file("examples", package = "form.references"), cache,
+  catalogue = "registries"
+)
+registries <- get_form_registries(model, registry_source)
+registries$data$contacts$email
+```
+
+All CSV columns remain text. Station code `001` keeps its leading zeros.
+
+`references$catalogue` contains versions, source dates, paths and checksums for the selected references.
+
+`references$paths` points to verified local files. `references$publication` identifies the catalogue used.
+
+## Use the website endpoint
+
+The website publishes the same source files under `https://ultreia-io.github.io/form.references/examples/`.
+
+- [Catalogue CSV](https://ultreia-io.github.io/form.references/examples/codelists.csv)
+- [Catalogue metadata YAML](https://ultreia-io.github.io/form.references/examples/codelists.yaml)
+- [Stations CSV](https://ultreia-io.github.io/form.references/examples/domain/survey/codelists/stations.csv)
+- [Observers CSV](https://ultreia-io.github.io/form.references/examples/domain/survey/codelists/observers.csv)
+- [Registry catalogue CSV](https://ultreia-io.github.io/form.references/examples/registries.csv)
+- [Registry catalogue YAML](https://ultreia-io.github.io/form.references/examples/registries.yaml)
+- [Contacts CSV](https://ultreia-io.github.io/form.references/examples/domain/survey/registries/contacts.csv)
+
+After website deployment, replace the local source with this URL:
+
+```{r, eval=FALSE}
+source <- reference_source(
+  "https://ultreia-io.github.io/form.references/examples/", "cache/survey"
+)
+references <- get_form_code_lists(model, source)
+registry_source <- reference_source(
+  "https://ultreia-io.github.io/form.references/examples/", "cache/survey",
+  catalogue = "registries"
+)
+registries <- get_form_registries(model, registry_source)
+```
+
+## Reuse the cache
+
+Online calls fetch the YAML metadata first. CSVs are reused when their verified checksums match.
+
+Changed files are downloaded temporarily, checked, then installed in the cache.
+
+Missing HTTP files download concurrently, with four requests at a time by default.
+Set `max_connections` in `reference_source()` to change that limit.
+
+A failed download raises an error and leaves previous verified files intact. It never silently returns stale data.
+
+Offline mode makes no source requests and fails if a required cached file is missing or corrupt.
+
+```{r}
+cached <- get_form_code_lists(model, source, offline = TRUE)
+cached$data$stations$code
+```
+
+Concurrent catalogue updates to the same cache are rejected with a busy-cache error.
+
+If a process was killed, remove its `.catalogue-lock` directory only after confirming no process still uses that cache.
+
+## Read references without a model
+
+```{r}
+stations <- get_code_lists("stations", source)
+stations$data$stations
+```
+
+IDs must match exactly; there is no prefix stripping, case conversion or inferred alias mapping.
+
+## Authenticate a private registry source
+
+Supply headers at request time. They are neither printed by the source object nor stored in cached metadata.
+
+```{r, eval=FALSE}
+private_source <- reference_source(
+  "https://references.example.org/registries/", "cache/private-registries",
+  headers = function() c(Authorization = paste("Bearer", Sys.getenv("REFERENCE_TOKEN"))),
+  catalogue = "registries"
+)
+registries <- get_form_registries(model, private_source)
+```
+
+Use a distinct cache for each authenticated identity. Authenticated downloads require direct URLs without redirects.
+
+```{r, include=FALSE}
+unlink(cache, recursive = TRUE)
+```

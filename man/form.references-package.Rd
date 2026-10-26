@@ -6,8 +6,9 @@
 \alias{form.references-package}
 \title{Reference data for form models}
 \description{
-Package foundation for catalogue-based reference downloads and verified caches.
-The initial skeleton contains no download or cache implementation.
+Download, verify and cache catalogue-listed reference tables.
+Model requirements come from form.model; source locations and authentication
+are supplied explicitly by the caller.
 }
 \seealso{
 Useful links:

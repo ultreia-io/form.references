@@ -13,7 +13,21 @@ Work on `develop`. `main` contains releases. Both branches start at the initial 
 | `vignettes/` | User guides and coverage article         |
 | `tools/`     | Website and coverage commands            |
 
-The initial skeleton has no runtime API or tests. Add dependencies when their implementation is introduced.
+`source.R` configures access; `catalogue.R` resolves metadata.
+
+`download.R` manages cached files; `model.R` selects model reference IDs.
+
+## Survey fixtures
+
+The reference CSVs and catalogue are tracked under `inst/examples/`.
+
+After editing a CSV, update its version and source date in `codelists.csv`, then run:
+
+```sh
+Rscript tools/prepare-examples.R
+```
+
+Commit both catalogue files with the CSV changes. Website builds copy them unchanged into `docs/examples/`.
 
 ## Local verification
 
