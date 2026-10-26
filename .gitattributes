@@ -1,0 +1,2 @@
+# Published checksums cover the exact CSV bytes, including line endings.
+inst/examples/**/*.csv -text

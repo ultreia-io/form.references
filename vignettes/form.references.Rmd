@@ -1,0 +1,16 @@
+---
+title: "Get started with form.references"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get started with form.references}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+`form.references` will download and cache the reference data required by form models.
+
+The package skeleton is ready; the download API is not implemented yet.
+
+The planned workflow reads a catalogue, resolves model references and verifies downloaded files before caching them.
+
+Code-list and registry locations, model mappings and authentication belong to the calling application.
