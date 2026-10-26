@@ -8,22 +8,63 @@
 
 Reference data downloads and verified caches for form models.
 
-This repository currently contains the package skeleton. The download API is not implemented yet.
+Download only the references required by a form model, verify their checksums, and reuse a local cache.
 
-## Development installation
+## Installation
 
-```r
-install.packages("pak")
+Install the latest released version directly from GitHub:
+
+``` r
+install.packages("pak") # Once
+pak::pak("ultreia-io/form.references@*release")
+```
+
+`pak` downloads the package and installs its dependencies automatically.
+
+For the development version:
+
+``` r
 pak::pak("ultreia-io/form.references@develop")
 ```
 
-## Planned workflow
+## Load the survey references
 
-1. Read a reference catalogue and verify its checksum.
-2. Resolve the references declared by a `form.model` model.
-3. Download missing or changed CSVs and verify their checksums before updating the cache.
+```r
+library(form.references)
 
-The package will remain independent of ROS. Callers supply catalogue URLs, reference mappings and authentication.
+model <- form.model::load_form_model(
+  "survey", system.file("examples", package = "form.model")
+)
+source <- reference_source(
+  url = system.file("examples", package = "form.references"),
+  cache = "cache/survey"
+)
+references <- get_form_code_lists(model, source)
+references$data$stations$code # "001" "002"
+```
+
+For HTTP downloads, use the published example endpoint as `url`:
+
+```r
+source <- reference_source(
+  url = "https://ultreia-io.github.io/form.references/examples/",
+  cache = "cache/survey"
+)
+references <- get_form_code_lists(model, source)
+```
+
+The website must be deployed before using that URL. Installed examples work offline immediately.
+
+Catalogue IDs are lowercase and match the model exactly. File paths and CSV values retain their original case.
+
+Use `get_code_lists(c("stations", "observers"), source)` without a model.
+
+Use `offline = TRUE` to load verified cached files without contacting the source.
+
+Missing HTTP code lists download up to four at a time. Set `max_connections` in
+`reference_source()` to change that limit.
+
+The [survey guide](https://ultreia-io.github.io/form.references/articles/form.references.html) covers caching and authentication.
 
 ## Documentation
 
