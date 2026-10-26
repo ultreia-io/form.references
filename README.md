@@ -41,6 +41,14 @@ source <- reference_source(
 )
 references <- get_form_code_lists(model, source)
 references$data$stations$code # "001" "002"
+
+registry_source <- reference_source(
+  url = system.file("examples", package = "form.references"),
+  cache = "cache/survey",
+  catalogue = "registries"
+)
+registries <- get_form_registries(model, registry_source)
+registries$data$contacts$email # "alice@example.org" "bob@example.org"
 ```
 
 For HTTP downloads, use the published example endpoint as `url`:
@@ -51,6 +59,12 @@ source <- reference_source(
   cache = "cache/survey"
 )
 references <- get_form_code_lists(model, source)
+registry_source <- reference_source(
+  url = "https://ultreia-io.github.io/form.references/examples/",
+  cache = "cache/survey",
+  catalogue = "registries"
+)
+registries <- get_form_registries(model, registry_source)
 ```
 
 The website must be deployed before using that URL. Installed examples work offline immediately.
@@ -58,6 +72,10 @@ The website must be deployed before using that URL. Installed examples work offl
 Catalogue IDs are lowercase and match the model exactly. File paths and CSV values retain their original case.
 
 Use `get_code_lists(c("stations", "observers"), source)` without a model.
+
+Use `get_registries(ids, registry_source)` without a model.
+The public survey source needs no headers. Private sources use the same catalogue format and accept authentication headers.
+Each catalogue entry identifies one registry table. The form field's `registry.column` selects a column within it.
 
 Use `offline = TRUE` to load verified cached files without contacting the source.
 

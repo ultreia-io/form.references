@@ -7,7 +7,8 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-The survey model declares `stations` and `observers`. The example catalogue uses those exact lowercase IDs.
+The survey model declares the code lists `stations` and `observers` and the registry `contacts`.
+The public example catalogues use those exact lowercase IDs.
 
 ## Load the required references
 
@@ -25,6 +26,12 @@ source <- reference_source(
 references <- get_form_code_lists(model, source)
 references$data$stations
 references$data$observers
+registry_source <- reference_source(
+  system.file("examples", package = "form.references"), cache,
+  catalogue = "registries"
+)
+registries <- get_form_registries(model, registry_source)
+registries$data$contacts$email
 ```
 
 All CSV columns remain text. Station code `001` keeps its leading zeros.
@@ -41,6 +48,9 @@ The website publishes the same source files under `https://ultreia-io.github.io/
 - [Catalogue metadata YAML](https://ultreia-io.github.io/form.references/examples/codelists.yaml)
 - [Stations CSV](https://ultreia-io.github.io/form.references/examples/domain/survey/codelists/stations.csv)
 - [Observers CSV](https://ultreia-io.github.io/form.references/examples/domain/survey/codelists/observers.csv)
+- [Registry catalogue CSV](https://ultreia-io.github.io/form.references/examples/registries.csv)
+- [Registry catalogue YAML](https://ultreia-io.github.io/form.references/examples/registries.yaml)
+- [Contacts CSV](https://ultreia-io.github.io/form.references/examples/domain/survey/registries/contacts.csv)
 
 After website deployment, replace the local source with this URL:
 
@@ -49,6 +59,11 @@ source <- reference_source(
   "https://ultreia-io.github.io/form.references/examples/", "cache/survey"
 )
 references <- get_form_code_lists(model, source)
+registry_source <- reference_source(
+  "https://ultreia-io.github.io/form.references/examples/", "cache/survey",
+  catalogue = "registries"
+)
+registries <- get_form_registries(model, registry_source)
 ```
 
 ## Reuse the cache
@@ -82,16 +97,17 @@ stations$data$stations
 
 IDs must match exactly; there is no prefix stripping, case conversion or inferred alias mapping.
 
-## Authenticate a private source
+## Authenticate a private registry source
 
 Supply headers at request time. They are neither printed by the source object nor stored in cached metadata.
 
 ```{r, eval=FALSE}
 private_source <- reference_source(
-  "https://references.example.org/codelists/", "cache/private-registries",
-  headers = function() c(Authorization = paste("Bearer", Sys.getenv("REFERENCE_TOKEN")))
+  "https://references.example.org/registries/", "cache/private-registries",
+  headers = function() c(Authorization = paste("Bearer", Sys.getenv("REFERENCE_TOKEN"))),
+  catalogue = "registries"
 )
-registries <- get_form_code_lists(model, private_source)
+registries <- get_form_registries(model, private_source)
 ```
 
 Use a distinct cache for each authenticated identity. Authenticated downloads require direct URLs without redirects.

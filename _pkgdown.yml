@@ -7,6 +7,8 @@ reference:
     contents: [reference_source, print.reference_source]
   - title: Code lists
     contents: [read_code_list_catalogue, get_form_code_lists, get_code_lists]
+  - title: Registries
+    contents: [read_registry_catalogue, get_form_registries, get_registries]
   - title: Package
     contents: [form.references-package]
 articles:
