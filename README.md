@@ -84,7 +84,7 @@ Cache folders identify the source and catalogue. CSV filenames contain the refer
 Missing HTTP code lists download up to four at a time. Set `max_connections` in
 `reference_source()` to change that limit.
 
-The [survey guide](https://ultreia-io.github.io/form.references/articles/form.references.html) covers caching and authentication.
+For Apache Basic authentication, follow the [private registry example](https://ultreia-io.github.io/form.references/articles/form.references.html#authenticate-a-private-registry-source).
 
 ## Documentation
 

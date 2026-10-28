@@ -19,3 +19,7 @@ Catalogue IDs are lowercase and match the model references exactly; no alias map
 Run `Rscript tools/prepare-examples.R` after changing a CSV, its version or its source update date.
 
 The website build copies this directory to `examples/` without rewriting the published files.
+
+`registry-source.example.yaml` is a client configuration template for a private HTTPS registry source.
+
+Copy it locally, edit its URL and user, then load it with `reference_source_from_yaml(..., prompt = TRUE)`.
