@@ -89,9 +89,12 @@ reference_headers <- function(headers) {
 #' @keywords internal
 reference_cache <- function(source) {
   if (!inherits(source, "reference_source")) stop("Expected a reference_source.", call. = FALSE)
-  identity <- if (identical(source$catalogue, "registries"))
-    paste0(source$url, "#registries") else source$url
-  file.path(source$cache, digest::digest(identity, algo = "sha256", serialize = FALSE))
+  label <- sub("^https?://", "", source$url)
+  if (!source$remote) label <- basename(source$url)
+  label <- sub("-+$", "", gsub("[^A-Za-z0-9._-]+", "-", label))
+  label <- substr(label, 1L, 80L)
+  key <- substr(digest::digest(source$url, algo = "sha256", serialize = FALSE), 1L, 12L)
+  file.path(source$cache, paste0(label, "--", key), source$catalogue)
 }
 
 # Catalogue verification ---------------------------------------------------
@@ -122,7 +125,7 @@ read_catalogue <- function(source, offline = FALSE) {
     fetch_reference_file(source, metadata_name, staged)
     metadata <- read_catalogue_metadata(staged)
   }
-  csv <- cached_reference_file(source, csv_name, metadata$sha256, directory, offline)
+  csv <- cached_reference_file(source, csv_name, metadata$sha256, directory, offline, id = source$catalogue)
   catalogue <- read_reference_csv(csv)
   validate_reference_catalogue(catalogue)
   if (!offline) replace_cache_file(staged, pointer)

@@ -79,6 +79,8 @@ Each catalogue entry identifies one registry table. The form field's `registry.c
 
 Use `offline = TRUE` to load verified cached files without contacting the source.
 
+Cache folders identify the source and catalogue. CSV filenames contain the reference ID and a short checksum suffix.
+
 Missing HTTP code lists download up to four at a time. Set `max_connections` in
 `reference_source()` to change that limit.
 
