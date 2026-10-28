@@ -76,9 +76,8 @@ reference_request_handle <- function(source, path) {
 #' @return Verified cached CSV paths in the same order as selected.
 #' @keywords internal
 cached_reference_files <- function(source, selected, directory, offline) {
-  objects <- file.path(directory, "objects")
-  dir.create(objects, recursive = TRUE, showWarnings = FALSE)
-  paths <- file.path(objects, paste0(selected$sha256, ".csv"))
+  dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  paths <- reference_cache_paths(directory, selected$id, selected$sha256)
   missing <- which(!vapply(seq_along(paths), function(i)
     reference_hash_matches(paths[i], selected$sha256[i]), logical(1)))
   if (!length(missing)) return(paths)
@@ -86,14 +85,14 @@ cached_reference_files <- function(source, selected, directory, offline) {
     stop("Verified cache unavailable for ", selected$csv_path[missing[[1L]]], ".", call. = FALSE)
   if (!source$remote || length(missing) == 1L) {
     for (i in missing)
-      cached_reference_file(source, selected$csv_path[i], selected$sha256[i], directory, FALSE)
+      cached_reference_file(source, selected$csv_path[i], selected$sha256[i], directory, FALSE, id = selected$id[i])
     return(paths)
   }
   staged_files <- character()
   on.exit(unlink(staged_files), add = TRUE)
   for (start in seq.int(1L, length(missing), by = source$max_connections)) {
     batch <- missing[seq.int(start, min(start + source$max_connections - 1L, length(missing)))]
-    staged <- vapply(batch, function(i) tempfile("download-", tmpdir = objects), character(1))
+    staged <- vapply(batch, function(i) tempfile("download-", tmpdir = directory), character(1))
     staged_files <- c(staged_files, staged)
     handles <- lapply(selected$csv_path[batch], function(path) reference_request_handle(source, path))
     result <- tryCatch(curl::multi_download(handles, destfiles = staged, progress = FALSE),
@@ -113,21 +112,21 @@ cached_reference_files <- function(source, selected, directory, offline) {
   paths
 }
 
-#' Resolve a verified checksum-addressed cached CSV
+#' Resolve a verified cached CSV named by reference ID and checksum
 #' @param source Reference source configuration.
 #' @param path Relative source path.
 #' @param checksum Expected SHA-256.
 #' @param directory Source-specific cache directory.
 #' @param offline Whether network and source reads are forbidden.
+#' @param id Catalogue ID, or the catalogue name for its own CSV.
 #' @return Verified local CSV path.
 #' @keywords internal
-cached_reference_file <- function(source, path, checksum, directory, offline) {
-  objects <- file.path(directory, "objects")
-  dir.create(objects, recursive = TRUE, showWarnings = FALSE)
-  target <- file.path(objects, paste0(checksum, ".csv"))
+cached_reference_file <- function(source, path, checksum, directory, offline, id) {
+  dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  target <- reference_cache_paths(directory, id, checksum)
   if (reference_hash_matches(target, checksum)) return(target)
   if (offline) stop("Verified cache unavailable for ", path, ".", call. = FALSE)
-  staged <- tempfile("download-", tmpdir = objects)
+  staged <- tempfile("download-", tmpdir = directory)
   on.exit(unlink(staged), add = TRUE)
   fetch_reference_file(source, path, staged)
   if (!reference_hash_matches(staged, checksum))
@@ -176,4 +175,14 @@ read_reference_csv <- function(path) {
   if (anyDuplicated(names(result)) || any(!nzchar(names(result))))
     stop("Reference CSV has empty or duplicate column names.", call. = FALSE)
   result
+}
+
+#' Name cached CSVs by catalogue ID and content revision
+#' @param directory Source-specific cache directory.
+#' @param ids Validated catalogue IDs or catalogue name.
+#' @param checksums Expected SHA-256 checksums.
+#' @return Readable cache paths. Full checksums still verify every file.
+#' @keywords internal
+reference_cache_paths <- function(directory, ids, checksums) {
+  file.path(directory, paste0(ids, "--", substr(checksums, 1L, 12L), ".csv"))
 }

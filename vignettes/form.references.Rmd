@@ -99,18 +99,87 @@ IDs must match exactly; there is no prefix stripping, case conversion or inferre
 
 ## Authenticate a private registry source
 
-Supply headers at request time. They are neither printed by the source object nor stored in cached metadata.
+This example loads the survey registries from an Apache directory protected by Basic authentication over HTTPS.
+
+### 1. Publish and protect the survey registries
+
+Copy the installed survey reference directory to your private HTTPS directory:
 
 ```{r, eval=FALSE}
-private_source <- reference_source(
-  "https://references.example.org/registries/", "cache/private-registries",
-  headers = function() c(Authorization = paste("Bearer", Sys.getenv("REFERENCE_TOKEN"))),
-  catalogue = "registries"
-)
-registries <- get_form_registries(model, private_source)
+system.file("examples", package = "form.references")
 ```
 
-Use a distinct cache for each authenticated identity. Authenticated downloads require direct URLs without redirects.
+Keep its directory layout. Apache must protect `registries.yaml`, `registries.csv` and all registry CSV files.
+
+Use the final HTTPS URL: authenticated downloads do not follow redirects.
+
+### 2. Configure the source in YAML
+
+Copy the installed example to your working directory:
+
+```{r, eval=FALSE}
+file.copy(
+  system.file("examples", "registry-source.example.yaml", package = "form.references"),
+  "registry-source.yaml",
+  overwrite = FALSE
+)
+```
+
+Edit `registry-source.yaml` with your server settings:
+
+```yaml
+url: https://references.example.org/registries/
+cache: cache/private-survey
+catalogue: registries
+user: survey-reader
+password: !env REGISTRY_PASSWORD
+```
+
+Replace the URL and user. The `!env` value names a session variable; the password is not stored in the file.
+
+### 3. Enter the password and download
+
+Install `askpass` once for its secure password prompt:
+
+```{r, eval=FALSE}
+install.packages("askpass")
+```
+
+Load the survey model, enter the password and read the configuration:
+
+```{r, eval=FALSE}
+library(form.references)
+
+model <- form.model::load_form_model(
+  "survey", system.file("examples", package = "form.model")
+)
+private_source <- reference_source_from_yaml("registry-source.yaml", prompt = TRUE)
+
+registries <- get_form_registries(model, private_source)
+registries$data$contacts$email
+# "alice@example.org" "bob@example.org"
+```
+
+The loader uses the environment password if present; otherwise `prompt = TRUE` opens a secure password dialog.
+
+The answer stays in memory without changing environment variables. Cancellation or an empty answer raises an error.
+
+Credentials remain in the source object in memory. Do not save it to disk; they are not printed or cached.
+
+For CI, supply `REGISTRY_PASSWORD` from the secret store and keep the default `prompt = FALSE`.
+
+Use a separate cache for each authenticated identity. Downloaded registry data remains in that local cache.
+
+### 4. Reuse the verified cache offline
+
+After one successful download, use the same source and cache without contacting Apache:
+
+```{r, eval=FALSE}
+registries <- get_form_registries(model, private_source, offline = TRUE)
+registries$data$contacts$email
+```
+
+Offline mode needs no credentials. It fails if required cached files are missing or fail checksum verification.
 
 ```{r, include=FALSE}
 unlink(cache, recursive = TRUE)

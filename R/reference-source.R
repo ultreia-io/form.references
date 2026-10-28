@@ -48,6 +48,82 @@ reference_source <- function(url, cache, headers = NULL, timeout = 60,
                  max_connections = as.integer(max_connections)), class = "reference_source")
 }
 
+#' Configure a reference source from YAML
+#'
+#' @param config_file Path to a YAML source configuration.
+#' @param prompt If TRUE, securely prompt with the optional askpass package when
+#'   the password's environment variable is missing or empty. Defaults to FALSE.
+#' @return A reference_source configuration. No files are downloaded.
+#' @details The YAML mapping accepts `url`, `cache`, `catalogue`, `timeout`
+#'   and `max_connections`, as in [reference_source()]. Relative paths are
+#'   resolved from the R working directory.
+#'
+#'   Optional `user` and `password` entries enable HTTP Basic authentication
+#'   over HTTPS. Use `password: !env REGISTRY_PASSWORD` to read a secret from
+#'   the current process environment. Missing or empty variables raise an error.
+#'   With `prompt = TRUE`, a missing password is requested directly in memory;
+#'   no environment variable is created or changed. Other missing variables
+#'   still raise an error. CI can supply secrets with prompting disabled.
+#'   The resolved credentials stay in the returned object in memory; do not
+#'   serialize it. They are not printed or saved in the download cache.
+#' @export
+reference_source_from_yaml <- function(config_file, prompt = FALSE) {
+  scalar_text(config_file, "config_file")
+  if (!is.logical(prompt) || length(prompt) != 1L || is.na(prompt))
+    stop("prompt must be TRUE or FALSE.", call. = FALSE)
+  config <- yaml::read_yaml(config_file, eval.expr = FALSE,
+                           handlers = list(env = function(variable)
+                             structure(variable, class = "reference_env")))
+  allowed <- c("url", "cache", "catalogue", "timeout", "max_connections", "user", "password")
+  if (!is.list(config) || is.null(names(config)) || anyDuplicated(names(config)) ||
+      any(!names(config) %in% allowed))
+    stop("Source YAML must be a mapping of url, cache, catalogue, timeout, max_connections, user or password.",
+         call. = FALSE)
+  if (!all(c("url", "cache") %in% names(config)))
+    stop("Source YAML requires url and cache.", call. = FALSE)
+  for (name in names(config)) {
+    if (inherits(config[[name]], "reference_env"))
+      config[[name]] <- reference_environment_value(
+        unclass(config[[name]]), prompt = prompt && name == "password")
+  }
+  if (any(c("user", "password") %in% names(config))) {
+    scalar_text(config$user, "user")
+    scalar_text(config$password, "password")
+    scalar_text(config$url, "url")
+    if (!startsWith(config$url, "https://"))
+      stop("Basic authentication requires an HTTPS source URL.", call. = FALSE)
+    if (grepl(":", config$user, fixed = TRUE))
+      stop("Basic authentication user must not contain a colon.", call. = FALSE)
+    config$headers <- c(Authorization = paste("Basic",
+      base64enc::base64encode(charToRaw(enc2utf8(paste0(config$user, ":", config$password))))))
+    config$user <- config$password <- NULL
+  }
+  do.call(reference_source, config)
+}
+
+#' Resolve a YAML environment-variable reference
+#' @param variable Environment-variable name supplied through the YAML !env tag.
+#' @param prompt Whether to request a missing secret using askpass.
+#' @return The nonempty environment-variable value or prompted secret.
+#' @keywords internal
+reference_environment_value <- function(variable, prompt = FALSE) {
+  scalar_text(variable, "!env variable")
+  if (!grepl("^[A-Za-z_][A-Za-z0-9_]*$", variable))
+    stop("!env must name a valid environment variable.", call. = FALSE)
+  value <- Sys.getenv(variable, unset = "")
+  if (!nzchar(value) && prompt) {
+    if (!requireNamespace("askpass", quietly = TRUE))
+      stop("Install askpass to use the secure password prompt.", call. = FALSE)
+    value <- askpass::askpass(paste("Password for", variable))
+    if (is.null(value)) stop("Password entry cancelled.", call. = FALSE)
+    if (length(value) != 1L || is.na(value) || !nzchar(value))
+      stop("Password must not be empty.", call. = FALSE)
+  }
+  if (!nzchar(value))
+    stop("Environment variable ", variable, " is missing or empty.", call. = FALSE)
+  value
+}
+
 #' Print a reference source without authentication details
 #' @param x A reference_source object.
 #' @param ... Unused arguments.
@@ -89,9 +165,12 @@ reference_headers <- function(headers) {
 #' @keywords internal
 reference_cache <- function(source) {
   if (!inherits(source, "reference_source")) stop("Expected a reference_source.", call. = FALSE)
-  identity <- if (identical(source$catalogue, "registries"))
-    paste0(source$url, "#registries") else source$url
-  file.path(source$cache, digest::digest(identity, algo = "sha256", serialize = FALSE))
+  label <- sub("^https?://", "", source$url)
+  if (!source$remote) label <- basename(source$url)
+  label <- sub("-+$", "", gsub("[^A-Za-z0-9._-]+", "-", label))
+  label <- substr(label, 1L, 80L)
+  key <- substr(digest::digest(source$url, algo = "sha256", serialize = FALSE), 1L, 12L)
+  file.path(source$cache, paste0(label, "--", key), source$catalogue)
 }
 
 # Catalogue verification ---------------------------------------------------
@@ -122,7 +201,7 @@ read_catalogue <- function(source, offline = FALSE) {
     fetch_reference_file(source, metadata_name, staged)
     metadata <- read_catalogue_metadata(staged)
   }
-  csv <- cached_reference_file(source, csv_name, metadata$sha256, directory, offline)
+  csv <- cached_reference_file(source, csv_name, metadata$sha256, directory, offline, id = source$catalogue)
   catalogue <- read_reference_csv(csv)
   validate_reference_catalogue(catalogue)
   if (!offline) replace_cache_file(staged, pointer)

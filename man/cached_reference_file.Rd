@@ -2,9 +2,9 @@
 % Please edit documentation in R/reference-cache.R
 \name{cached_reference_file}
 \alias{cached_reference_file}
-\title{Resolve a verified checksum-addressed cached CSV}
+\title{Resolve a verified cached CSV named by reference ID and checksum}
 \usage{
-cached_reference_file(source, path, checksum, directory, offline)
+cached_reference_file(source, path, checksum, directory, offline, id)
 }
 \arguments{
 \item{source}{Reference source configuration.}
@@ -16,11 +16,13 @@ cached_reference_file(source, path, checksum, directory, offline)
 \item{directory}{Source-specific cache directory.}
 
 \item{offline}{Whether network and source reads are forbidden.}
+
+\item{id}{Catalogue ID, or the catalogue name for its own CSV.}
 }
 \value{
 Verified local CSV path.
 }
 \description{
-Resolve a verified checksum-addressed cached CSV
+Resolve a verified cached CSV named by reference ID and checksum
 }
 \keyword{internal}

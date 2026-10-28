@@ -1,0 +1,7 @@
+# Replace the URL and user with your private registry server settings.
+url: https://references.example.org/registries/
+cache: cache/private-survey
+catalogue: registries
+user: survey-reader
+# Supply this environment variable, or load with prompt = TRUE.
+password: !env REGISTRY_PASSWORD
