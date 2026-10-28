@@ -1,6 +1,6 @@
 Package: form.references
 Title: Reference Data for Form Models
-Version: 0.2.0
+Version: 0.2.1
 Authors@R:
     person("Tony", "Chemit", role = c("aut", "cre"),
            email = "dev@tchemit.fr")
