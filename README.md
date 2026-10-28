@@ -4,6 +4,8 @@
 [![Test Coverage](https://github.com/ultreia-io/form.references/actions/workflows/TestCoverage.yaml/badge.svg?branch=main)](https://github.com/ultreia-io/form.references/actions/workflows/TestCoverage.yaml?query=branch%3Amain)
 [![Coverage](https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fultreia-io.github.io%2Fform.references%2Fcoverage%2Fcoverage.xml&query=round%28%2Fcoverage%2F%40line-rate+%2A+1000%29+div+10&label=coverage&suffix=%25&color=brightgreen)](https://ultreia-io.github.io/form.references/articles/coverage.html)
 [![Website](https://img.shields.io/badge/website-documentation-blue)](https://ultreia-io.github.io/form.references/)
+[![Latest
+release](https://img.shields.io/github/v/release/ultreia-io/form.references?display_name=tag&sort=semver)](https://github.com/ultreia-io/form.references/releases/latest)
 [![License](https://img.shields.io/github/license/ultreia-io/form.references)](https://github.com/ultreia-io/form.references/blob/main/LICENSE)
 
 Reference data downloads and verified caches for form models.
