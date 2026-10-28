@@ -1,3 +1,8 @@
+# form.references 0.2.1
+
+* Update form.model from 0.5.0 to 0.5.1.
+* Test reference retrieval and caching.
+
 # form.references 0.2.0
 
 * Use readable source names and reference IDs in cache paths.
