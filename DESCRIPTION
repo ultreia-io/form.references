@@ -13,7 +13,7 @@ URL: https://ultreia-io.github.io/form.references/,
 BugReports: https://github.com/ultreia-io/form.references/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
-Imports: form.model (>= 0.5.1), base64enc, curl, digest, yaml, stats, utils
+Imports: form.model (>= 0.6.2), base64enc, curl, digest, yaml, stats, utils
 Suggests: askpass, knitr, rmarkdown, testthat (>= 3.0.0), withr
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
