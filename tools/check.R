@@ -34,5 +34,8 @@ local({
 run_command(r_executable, c("CMD", "check", "--as-cran", "--output=build",
   shQuote(file.path("build", package_archive))))
 
-# Build the website after successful package checks.
-run_command(rscript_executable, "tools/build-site.R")
+# Prepare website downloads after successful package checks.
+run_command(rscript_executable, "tools/prepare-site-assets.R")
+
+# Build the website with standard pkgdown.
+run_command(rscript_executable, c("-e", shQuote("pkgdown::build_site()")))

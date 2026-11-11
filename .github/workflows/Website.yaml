@@ -111,7 +111,8 @@ jobs:
       - name: Build pkgdown site
         shell: Rscript {0}
         run: |
-          source("tools/build-site.R")
+          source("tools/prepare-site-assets.R")
+          pkgdown::build_site()
           file.create("docs/.nojekyll")
 
       # Load the repository's Pages configuration for deployment.
