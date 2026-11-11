@@ -21,3 +21,31 @@ test_that("lookup inputs must be plain text", {
   expect_error(reference_match_rows(reference_index("A"), list(list("A"))),
     "Malformed submitted reference keys")
 })
+
+test_that("data-frame lookups select the named column and retain original rows", {
+  reference_data <- data.frame(code = c("001", "002", "001"), label = c("First", "Second", "Third"))
+  reference_lookup <- reference_index(reference_data, column = "code")
+  expect_identical(reference_match_rows(reference_lookup, c("001", "002", "First")),
+    list(c(1L, 3L), 2L, integer()))
+  expect_identical(reference_lookup$data, reference_data)
+  expect_error(reference_index(reference_data), "Select one existing lookup column")
+  expect_error(reference_index(reference_data, column = "missing"), "Select one existing lookup column")
+  names(reference_data)[2] <- "code"
+  expect_error(reference_index(reference_data, column = "code"), "Select one existing lookup column")
+})
+
+test_that("alias chains resolve without inventing missing targets", {
+  reference_lookup <- reference_index(c("Alpha", "ALPHA"),
+    aliases = list(first = "second", second = "Alpha", unknown = "absent"))
+  expect_identical(reference_match_rows(reference_lookup, c("first", "second", "unknown")),
+    list(c(1L, 2L), c(1L, 2L), integer()))
+  expect_error(reference_index("Alpha", aliases = c(first = "second", second = "first")),
+    "Cyclic reference alias")
+  expect_error(reference_index("Alpha", aliases = c(first = "first")), "Cyclic reference alias")
+})
+
+test_that("alias targets can use name matching while exact values keep priority", {
+  reference_lookup <- reference_index(c("Tony Chemit", "Chemit Tony"), matching = "name",
+    aliases = c(writer = "Chemit, Tony", direct = "Tony Chemit"))
+  expect_identical(reference_match_rows(reference_lookup, c("writer", "direct")), list(c(1L, 2L), 1L))
+})
