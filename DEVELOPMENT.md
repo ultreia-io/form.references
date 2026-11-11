@@ -51,11 +51,11 @@ Archives and check output stay in `build/`.
 
 Review coverage gaps for missing behaviour. Check installed resources, runnable examples, and website navigation.
 
-## Release
+## GitHub Release
 
 1. **Prepare the release on `develop`:**
 
-   1. **Prepare the release files:** update the version in `DESCRIPTION`, finalize `NEWS.md` and documentation.
+   1. **Prepare the release files:** update the version in `DESCRIPTION`, finalize `NEWS.md`, `cran-comments.md` and documentation.
    2. **Perform the [local checks](#local-verification).**
    3. **Commit the changes:** use `[form.references] Release <version>`.
    4. **Push the release commit.**
@@ -70,8 +70,39 @@ Review coverage gaps for missing behaviour. Check installed resources, runnable 
 
    1. **Wait for the checks:** all checks on the release PR must be green.
    2. **Merge:** click **Merge pull request**, then **Confirm merge**.
+   3. Merging automatically starts the **Publish Release** workflow.
 
-**Publish Release** publishes the package, checksum and documentation automatically.
+The **Publish Release** workflow:
+
+1. Publishes the package archive, checksum and documentation.
+2. **Submits the same archive to CRAN**.
+
+## Manual CRAN submission
+
+Use this fallback only if the release has not already been submitted by CI.
+
+Start from a clean working tree. Replace `version` with the release version to submit.
+
+```sh
+# Fetch the published release tags.
+git fetch origin --tags
+# Check out the release tag.
+git switch --detach version
+```
+
+Run these commands in R from the package root, with `devtools` installed.
+
+```r
+# Build and run R CMD check --as-cran, including the PDF manual and incoming checks.
+devtools::check(args = "--as-cran", manual = TRUE, remote = TRUE, error_on = "warning")
+
+# After resolving errors and warnings and reviewing NOTES, submit the release to CRAN.
+devtools::submit_cran()
+```
+
+This manual route rebuilds from the release tag. CI submits the existing GitHub archive unchanged.
+
+Confirm CRAN's email, then wait for its checks and response.
 
 ## License
 

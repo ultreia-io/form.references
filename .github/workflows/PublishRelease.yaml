@@ -158,6 +158,83 @@ jobs:
           overwrite_files: false
           generate_release_notes: true
 
+  # Submit the exact published archive; website deployment remains independent.
+  cran:
+    name: Submit to CRAN
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.publish.outputs.tag }}
+      RELEASE_ARCHIVE: form.references_${{ needs.publish.outputs.tag }}.tar.gz
+    steps:
+      # Release assets survive reruns; an unfinished attempt must be reviewed before retrying.
+      - name: Check previous CRAN submission
+        id: submission
+        shell: bash
+        run: |
+          release_assets=$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')
+          if grep -qx 'CRAN-SUBMITTED.txt' <<< "$release_assets"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Already submitted to CRAN; no upload repeated." >> "$GITHUB_STEP_SUMMARY"
+          elif grep -qx 'CRAN-SUBMISSION-STARTED.txt' <<< "$release_assets"; then
+            echo "::error::Previous CRAN attempt has no receipt. Check its run and CRAN email before retrying."
+            exit 1
+          fi
+      - name: Check out released sources
+        if: steps.submission.outputs.skip != 'true'
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.publish.outputs.commit }}
+      - name: Set up R
+        if: steps.submission.outputs.skip != 'true'
+        uses: r-lib/actions/setup-r@v2.12.1
+        with:
+          use-public-rspm: true
+      - name: Install submission tools
+        if: steps.submission.outputs.skip != 'true'
+        uses: r-lib/actions/setup-r-dependencies@v2.12.1
+        with:
+          packages: |
+            any::xfun
+            any::curl
+      - name: Download and verify the release archive
+        if: steps.submission.outputs.skip != 'true'
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/cran-release"
+          gh release download "$RELEASE_TAG" --pattern "$RELEASE_ARCHIVE" --pattern SHA256SUMS \
+            --dir "$RUNNER_TEMP/cran-release"
+          cd "$RUNNER_TEMP/cran-release"
+          sha256sum --check SHA256SUMS
+          if [[ -f "$GITHUB_WORKSPACE/cran-comments.md" ]]; then
+            cp "$GITHUB_WORKSPACE/cran-comments.md" .
+          fi
+      # Reserve the attempt before uploading; never overwrite this duplicate guard.
+      - name: Record CRAN submission attempt
+        if: steps.submission.outputs.skip != 'true'
+        working-directory: ${{ runner.temp }}/cran-release
+        shell: bash
+        run: |
+          cp SHA256SUMS CRAN-SUBMISSION-STARTED.txt
+          printf '\nWorkflow: https://github.com/%s/actions/runs/%s\n' "$GH_REPO" "$GITHUB_RUN_ID" \
+            >> CRAN-SUBMISSION-STARTED.txt
+          gh release upload "$RELEASE_TAG" CRAN-SUBMISSION-STARTED.txt
+      - name: Submit the existing archive with xfun
+        if: steps.submission.outputs.skip != 'true'
+        working-directory: ${{ runner.temp }}/cran-release
+        shell: bash
+        run: |
+          Rscript -e 'xfun::submit_cran(file = Sys.getenv("RELEASE_ARCHIVE"), sync = FALSE)' 2>&1 | tee submission.log
+          # xfun can report an unsuccessful submission without raising an R error.
+          grep -Fq 'The package has been submitted.' submission.log
+          cp CRAN-SUBMISSION-STARTED.txt CRAN-SUBMITTED.txt
+          gh release upload "$RELEASE_TAG" CRAN-SUBMITTED.txt
+          echo "Submitted to CRAN. Confirm the email sent to the package maintainer." >> "$GITHUB_STEP_SUMMARY"
+
   # Deploy documentation from the same commit once the GitHub release is available.
   website:
     needs: publish
