@@ -1,0 +1,21 @@
+schema_version: "1.0.0"
+catalogues:
+  code_lists:
+    label: Code lists
+    source:
+      url: catalogue/
+      cache: ~/.cache/form.references/survey/code_lists
+    tables:
+      stations:
+        code: {matching: exact, ignore_case: false}
+      observers:
+        code: {matching: exact, ignore_case: true}
+  registries:
+    label: Registries
+    source:
+      url: catalogue/
+      cache: ~/.cache/form.references/survey/registries
+    tables:
+      contacts:
+        email: {matching: exact, ignore_case: true}
+        name: {matching: name, ignore_case: true}

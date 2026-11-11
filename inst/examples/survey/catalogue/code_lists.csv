@@ -1,0 +1,3 @@
+"id","domain","csv_path","version","updated_at","published_at","sha256"
+"observers","survey","domain/survey/code_lists/observers.csv","1.1.0","2026-11-03","2026-11-03T08:22:54Z","8f3fc1a537acdc8e2372e6ec3530939025ce03ea7f31e2c961c936bbe683ca54"
+"stations","survey","domain/survey/code_lists/stations.csv","1.1.0","2026-11-03","2026-11-03T08:22:54Z","3a4f7c77c081a29c9970da49e3b3b20c122c69c7b0c61d19187acc9d304e4577"

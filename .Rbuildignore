@@ -19,3 +19,5 @@
 ^build/(?!vignette\.rds$).*
 ^vignettes/articles$
 (^|/)\.gitkeep$
+^cran-comments\.md$
+^pkgdown$

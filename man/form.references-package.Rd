@@ -7,6 +7,7 @@
 \title{Reference data for form models}
 \description{
 Download, verify and cache catalogue-listed reference tables.
+Reference matching supports text fields only.
 Model requirements come from form.model; source locations and authentication
 are supplied explicitly by the caller.
 }
@@ -20,11 +21,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Tony Chemit \email{dev@tchemit.fr}
+\strong{Maintainer}: Tony Chemit \email{dev@tchemit.fr} (\href{https://orcid.org/0009-0007-1802-5256}{ORCID}) (URL: https://ultreia.io) [copyright holder]
 
 Authors:
 \itemize{
-  \item Tony Chemit \email{dev@tchemit.fr}
+  \item Tony Chemit \email{dev@tchemit.fr} (\href{https://orcid.org/0009-0007-1802-5256}{ORCID}) (URL: https://ultreia.io) [copyright holder]
 }
 
 }

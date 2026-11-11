@@ -1,24 +1,25 @@
 Package: form.references
 Title: Reference Data for Form Models
-Version: 0.2.1
+Version: 0.3.0
 Authors@R:
-    person("Tony", "Chemit", role = c("aut", "cre"),
-           email = "dev@tchemit.fr")
+    person("Tony", "Chemit", role = c("aut", "cre", "cph"),
+           email = "dev@tchemit.fr",
+           comment = c(ORCID = "0009-0007-1802-5256", URL = "https://ultreia.io"))
 Description: Downloads and caches reference tables required by form models.
     Verifies catalogue and data checksums before updating local files,
     preserves textual codes, and supports authenticated sources and offline use.
+    Provides shared catalogue lookups with aliases and matching policies.
 License: LGPL-2.1
 URL: https://ultreia-io.github.io/form.references/,
     https://github.com/ultreia-io/form.references
 BugReports: https://github.com/ultreia-io/form.references/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
-Imports: form.model (>= 0.5.1), base64enc, curl, digest, yaml, stats, utils
-Remotes: ultreia-io/form.model@v0.5.1
+Imports: form.model (>= 0.6.2), base64enc, curl, digest, yaml, stats, utils
 Suggests: askpass, knitr, rmarkdown, testthat (>= 3.0.0), withr
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3
 Config/Needs/coverage: covr, xml2
-Config/Needs/website: pkgdown, covr, htmltools, xml2
+Config/Needs/website: pkgdown
 Config/roxygen2/version: 8.1.1

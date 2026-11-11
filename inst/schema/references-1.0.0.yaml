@@ -1,0 +1,46 @@
+dialect: form.references/schema/1
+contract_version: 1.0.0
+root: configuration
+definitions:
+  configuration:
+    type: mapping
+    required: [schema_version, catalogues]
+    properties:
+      schema_version: {type: string, enum: ['1.0.0']}
+      catalogues:
+        type: mapping
+        min_items: 1
+        values: {ref: catalogue}
+  catalogue:
+    type: mapping
+    required: [source, tables]
+    properties:
+      label: {type: string, min_length: 1}
+      source: {ref: source}
+      tables:
+        type: mapping
+        min_items: 1
+        values:
+          type: mapping
+          min_items: 1
+          values: {ref: lookup}
+  lookup:
+    type: mapping
+    required: [matching, ignore_case]
+    properties:
+      matching: {type: string, enum: [exact, name]}
+      ignore_case: {type: boolean}
+  text:
+    type: string
+    min_length: 1
+    environment: true
+  source:
+    type: mapping
+    required: [url, cache]
+    properties:
+      url: {ref: text}
+      cache: {ref: text}
+      timeout: {type: number, exclusive_minimum: 0}
+      max_connections: {type: integer, minimum: 1}
+      user: {ref: text}
+      password: {ref: text}
