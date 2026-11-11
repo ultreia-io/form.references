@@ -1,0 +1,30 @@
+---
+title: "Terminology"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Terminology}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Main concepts
+
+| Term         | Meaning                                                                      |
+| ------------ | ---------------------------------------------------------------------------- |
+| Form         | An Excel workbook used to collect data.                                      |
+| Form model   | A versioned definition of a form’s sheets, fields, layout and constraints.   |
+| Consumer     | A package, tool or application that uses the package’s operations.           |
+
+## Reference data and lookups
+
+| Term                   | Meaning                                                                                 |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| Reference catalogue    | A named collection of reference tables.                                                 |
+| Reference source       | The location, cache and optional credentials used to retrieve a catalogue.              |
+| Reference table        | A table of records used to interpret or check submitted values.                         |
+| Lookup configuration   | Named columns and matching settings used to search reference tables.                    |
+| Lookup index           | A prepared structure used to find matching reference rows.                              |
+| Alias                  | An alternative value explicitly mapped to a canonical reference value.                  |
+| Reference cache        | Local files retained after catalogue and checksum verification.                         |
+| Reference snapshot     | Reference data and lookup settings retained for consumers to reuse.                     |
+| Checksum               | A content fingerprint used to detect whether a downloaded file matches its catalogue.   |

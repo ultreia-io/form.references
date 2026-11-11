@@ -2,32 +2,29 @@
 
 Work on `develop`. `main` contains releases. Both branches start at the initial package commit.
 
-## Package structure
+## Code organization
 
-| Directory    | Purpose                                  |
-|--------------|------------------------------------------|
-| `R/`         | Implementation and roxygen comments      |
-| `man/`       | Generated R documentation tracked in Git |
-| `tests/`     | Offline tests, added with implementation |
-| `inst/`      | Installed examples and resources         |
-| `vignettes/` | User guides         |
-| `tools/`     | Website and verification commands            |
+The files organize functions in one package namespace. You do not source each file separately.
 
-`source.R` configures access; `catalogue.R` resolves metadata.
-
-`download.R` manages cached files; `model.R` selects model reference IDs.
+| File                        | Responsibility                                                   |
+| --------------------------- | ---------------------------------------------------------------- |
+| `configuration.R`           | Read YAML, check its schema and configure paths and credentials. |
+| `retrieval.R`               | Read catalogues, retrieve tables and manage their cache.         |
+| `lookup.R`                  | Check lookup values, build indexes and find matching rows.       |
+| `form-model.R`              | Resolve form model bindings and prepare required references.     |
+| `form.references-package.R` | Provide package-level documentation.                             |
 
 ## Survey fixtures
 
-The reference CSVs and catalogue are tracked under `inst/examples/`.
+The example tables and catalogues are tracked under `inst/examples/survey/catalogue/`.
 
-After editing a CSV, update its version and source date in `codelists.csv`, then run:
+If you want to modify the example data, update the affected CSV’s version and source date in its catalogue, then run:
 
 ```sh
-Rscript tools/prepare-examples.R
+Rscript tools/update-example-catalogues.R
 ```
 
-Commit both catalogue files with the CSV changes. Website builds copy them unchanged into `docs/examples/`.
+This refreshes the checksums and publication timestamps so the modified examples remain usable.
 
 ## Local verification
 
@@ -50,6 +47,17 @@ Archives and check output stay in `build/`.
 `roxygen2`, `rcmdcheck`, and `pkgload` are development tools, not runtime dependencies.
 
 Review coverage gaps for missing behaviour. Check installed resources, runnable examples, and website navigation.
+
+## Website
+
+To build only the website, run from the package root:
+
+```r
+# Prepare downloadable files from the package sources.
+source("tools/prepare-site-assets.R")
+# Build the website with pkgdown.
+pkgdown::build_site()
+```
 
 ## GitHub Release
 
