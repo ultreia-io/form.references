@@ -148,3 +148,30 @@ test_that("malformed catalogue columns and IDs cannot replace verified data", {
     expect_identical(read_reference_catalogue(source, offline = TRUE), original_catalogue)
   })
 })
+
+test_that("busy cache locks are respected and preserved for their owner", {
+  source <- reference_source(system.file("examples", "survey", "catalogue", package = "form.references"),
+    withr::local_tempdir(), catalogue = "code_lists")
+  cache_directory <- reference_cache(source)
+  dir.create(cache_directory, recursive = TRUE)
+  lock_path <- file.path(cache_directory, ".catalogue-lock")
+  dir.create(lock_path)
+  expect_error(read_reference_catalogue(source), "Reference cache is busy")
+  expect_true(dir.exists(lock_path))
+  unlink(lock_path, recursive = TRUE)
+  expect_s3_class(read_reference_catalogue(source), "data.frame")
+  expect_false(dir.exists(lock_path))
+})
+
+test_that("failed catalogue reads release their lock so a retry can succeed", {
+  fixture_directory <- copy_reference_catalogue()
+  source <- reference_source(fixture_directory, withr::local_tempdir(), catalogue = "code_lists")
+  metadata_path <- file.path(fixture_directory, "code_lists.yaml")
+  original_metadata <- readLines(metadata_path)
+  writeLines("invalid: metadata", metadata_path)
+  expect_error(read_reference_catalogue(source), "Catalogue metadata must declare")
+  expect_false(dir.exists(file.path(reference_cache(source), ".catalogue-lock")))
+  writeLines(original_metadata, metadata_path)
+  expect_s3_class(read_reference_catalogue(source), "data.frame")
+  expect_false(dir.exists(file.path(reference_cache(source), ".catalogue-lock")))
+})
