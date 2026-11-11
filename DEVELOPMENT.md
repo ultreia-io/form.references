@@ -31,16 +31,15 @@ Commit both catalogue files with the CSV changes. Website builds copy them uncha
 
 ## Local verification
 
-Run from the package root with development dependencies installed:
+Run from the package root with development dependencies and LaTeX installed:
 
 ```sh
-Rscript -e 'roxygen2::roxygenise()'
-mkdir -p build
-(cd build && R CMD build --no-manual ..)
-package_version=$(Rscript -e 'cat(read.dcf("DESCRIPTION")[1, "Version"])')
-R CMD check --no-manual --output=build "build/form.references_${package_version}.tar.gz"
-Rscript tools/build-site.R
+Rscript tools/check.R
 ```
+
+This generates documentation, runs tests, builds and checks the archive with `--as-cran`, then builds the website.
+
+Local and CI checks share the CRAN mirror settings in `tools/check.Renviron`. All CRAN checks remain enabled.
 
 The **Build** workflow measures coverage with `covr` on Linux after successful checks and uploads it to Codecov.
 
