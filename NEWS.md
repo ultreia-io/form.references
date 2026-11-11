@@ -1,3 +1,14 @@
+# form.references 0.3.0
+
+* [feature] Configure catalogue sources and lookups in one versioned YAML file.
+* [feature] Match text using aliases, case sensitivity and name matching.
+* [feature] Load the reference tables required by the form model.
+* [docs] Clarify terminology and guides; provide complete reference examples.
+* [dependencies] Require form.model >= 0.6.2 from CRAN.
+* [build] Add full CRAN checks, shared caches and Codecov coverage.
+* [build] Submit GitHub release archives to CRAN with duplicate protection.
+* [build] Use standard pkgdown builds with prepared download assets.
+
 # form.references 0.2.1
 
 * Update form.model from 0.5.0 to 0.5.1.

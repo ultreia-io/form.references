@@ -65,7 +65,3 @@ Follow the [Getting started guide](https://ultreia-io.github.io/form.references/
 
 - [API reference](https://ultreia-io.github.io/form.references/reference/index.html)
 - [Contributing](https://ultreia-io.github.io/form.references/CONTRIBUTING.html) and [maintenance](https://ultreia-io.github.io/form.references/DEVELOPMENT.html)
-
-## License
-
-LGPL-2.1. See [LICENSE](https://github.com/ultreia-io/form.references/blob/develop/LICENSE).
