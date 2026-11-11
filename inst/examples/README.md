@@ -1,25 +1,7 @@
-# Survey reference data
+# Reference examples
 
-These public synthetic references match the `form.model` survey example.
+`survey/` contains the complete survey example: catalogue data and a combined reference configuration.
 
-| Catalogue   | ID          | Column  | Values                                  |
-|-------------|-------------|---------|-----------------------------------------|
-| Code lists  | `stations`  | `code`  | `001`, `002`                            |
-| Code lists  | `observers` | `code`  | `ALICE`, `BOB`                          |
-| Registries  | `contacts`  | `email` | `alice@example.org`, `bob@example.org` |
+`references.private.example.yaml` is a separate template for public code lists and a private HTTPS registry.
 
-Read all CSV columns as text to preserve station codes and their leading zeros.
-
-`codelists.csv` and `registries.csv` list the download paths, versions, dates and SHA-256 checksums.
-
-Each matching YAML file contains its catalogue timestamp and SHA-256 checksum.
-
-Catalogue IDs are lowercase and match the model references exactly; no alias mapping is needed.
-
-Run `Rscript tools/prepare-examples.R` after changing a CSV, its version or its source update date.
-
-The website build copies this directory to `examples/` without rewriting the published files.
-
-`registry-source.example.yaml` is a client configuration template for a private HTTPS registry source.
-
-Copy it locally, edit its URL and user, then load it with `reference_source_from_yaml(..., prompt = TRUE)`.
+Replace its source URLs and registry user, then set `REGISTRY_PASSWORD` or load with `prompt = TRUE` for secure password entry.

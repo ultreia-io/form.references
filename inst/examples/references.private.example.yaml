@@ -1,0 +1,23 @@
+schema_version: "1.0.0"
+catalogues:
+  code_lists:
+    label: Code lists
+    source:
+      url: https://references.example.org/code_lists/
+      cache: ~/.cache/form.references/survey/code_lists
+    tables:
+      stations:
+        code: {matching: exact, ignore_case: false}
+      observers:
+        code: {matching: exact, ignore_case: true}
+  registries:
+    label: Registries
+    source:
+      url: https://references.example.org/registries/
+      cache: ~/.cache/form.references/survey/registries
+      user: registry-reader
+      password: !env REGISTRY_PASSWORD
+    tables:
+      contacts:
+        email: {matching: exact, ignore_case: true}
+        name: {matching: name, ignore_case: true}

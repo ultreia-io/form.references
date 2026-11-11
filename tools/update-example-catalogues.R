@@ -1,9 +1,9 @@
 # Refresh catalogue checksums after editing the synthetic survey CSVs.
 # Versions and source dates remain those maintained in each catalogue CSV.
 # Requires digest; this script never downloads data or deploys the website.
-directory <- "inst/examples"
+directory <- "inst/examples/survey/catalogue"
 published_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
-for (name in c("codelists", "registries")) {
+for (name in c("code_lists", "registries")) {
   catalogue <- file.path(directory, paste0(name, ".csv"))
   mapping <- utils::read.csv(catalogue, colClasses = "character", check.names = FALSE,
                              na.strings = NULL, fileEncoding = "UTF-8-BOM")
