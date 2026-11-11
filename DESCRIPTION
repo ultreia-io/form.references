@@ -19,5 +19,5 @@ VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3
 Config/Needs/coverage: covr, xml2
-Config/Needs/website: pkgdown, covr, htmltools, xml2
+Config/Needs/website: pkgdown
 Config/roxygen2/version: 8.1.1

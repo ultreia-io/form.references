@@ -97,10 +97,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git qpdf ghostscript lsb-release
+          apt-get install -y --no-install-recommends git qpdf ghostscript lsb-release curl gpg
 
       # An explicit ref selects a release commit; otherwise use the event commit (the proposed merge for PRs).
       - name: Check out repository
+        id: checkout
         uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.ref || github.sha }}
@@ -141,6 +142,8 @@ jobs:
           extra-packages: |
             any::rcmdcheck
             any::roxygen2
+            any::covr
+            any::xml2
           needs: check
 
       # Rd documentation is generated from roxygen comments before building the source package.
@@ -156,3 +159,35 @@ jobs:
           args: 'c("--no-manual", "--as-cran")'
           check-dir: '"build"'
           error-on: '"note"'
+
+      # Measure coverage once, after successful checks on Linux with the release version of R.
+      - name: Test coverage
+        if: success() && runner.os == 'Linux' && matrix.config.r == 'release'
+        shell: Rscript {0}
+        run: |
+          # Disable IDE source markers during instrumentation.
+          options(covr.rstudio_source_markers = FALSE)
+          # Run the package tests with coverage instrumentation.
+          coverage_result <- covr::package_coverage(
+            quiet = FALSE,
+            clean = FALSE,
+            install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "coverage-package")
+          )
+          # Show the coverage summary in the job log.
+          print(coverage_result)
+          # Export the measured coverage for Codecov.
+          covr::to_cobertura(coverage_result, filename = "coverage.xml")
+
+      - name: Upload coverage to Codecov
+        if: success() && runner.os == 'Linux' && matrix.config.r == 'release'
+        uses: codecov/codecov-action@v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: ultreia-io/form.references
+          # Attribute release checks to the merged main commit, rather than the release PR head.
+          override_commit: ${{ steps.checkout.outputs.commit }}
+          override_branch: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref || '' }}
+          files: coverage.xml
+          plugins: noop
+          disable_search: true
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || secrets.CODECOV_TOKEN != '' }}

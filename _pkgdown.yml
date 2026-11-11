@@ -15,8 +15,6 @@ articles:
   - title: Guides
     navbar: Guides
     contents: [form.references]
-  - title: Development
-    contents: [articles/coverage]
 navbar:
   structure:
     left: [intro, reference, articles, news, coverage, community]
@@ -29,7 +27,7 @@ navbar:
           href: articles/form.references.html
     coverage:
       text: Coverage
-      href: articles/coverage.html
+      href: https://app.codecov.io/gh/ultreia-io/form.references
     intro:
       text: Get started
       href: articles/form.references.html

@@ -10,8 +10,8 @@ Work on `develop`. `main` contains releases. Both branches start at the initial 
 | `man/`       | Generated R documentation tracked in Git |
 | `tests/`     | Offline tests, added with implementation |
 | `inst/`      | Installed examples and resources         |
-| `vignettes/` | User guides and coverage article         |
-| `tools/`     | Website and coverage commands            |
+| `vignettes/` | User guides         |
+| `tools/`     | Website and verification commands            |
 
 `source.R` configures access; `catalogue.R` resolves metadata.
 
@@ -42,11 +42,11 @@ R CMD check --no-manual --output=build "build/form.references_${package_version}
 Rscript tools/build-site.R
 ```
 
-The site includes a native coverage page at `docs/articles/coverage.html`, using the shared theme and navigation.
+The **Build** workflow measures coverage with `covr` on Linux after successful checks and uploads it to Codecov.
 
-Coverage CSV and XML stay in `docs/coverage/`. Archives and check output stay in `build/`.
+The README coverage badges link to the Codecov report.
 
-Run `Rscript tools/coverage.R` to refresh coverage data alone; rebuild the site to refresh its page.
+Archives and check output stay in `build/`.
 
 `roxygen2`, `rcmdcheck`, and `pkgload` are development tools, not runtime dependencies.
 
