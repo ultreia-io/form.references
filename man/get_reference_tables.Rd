@@ -22,14 +22,20 @@ Retrieve selected tables from the configured catalogue
 \details{
 CSV values remain text, including leading zeros. The source selects
 the catalogue; the caller supplies its table IDs. No model interpretation occurs.
+When present, the reserved \emph{aliases} table (domain catalogue) is retrieved too,
+through the same source and verified cache. Its columns are table, column,
+alias and canonical. Alias targets are checked for the retrieved tables.
+Aliases are grouped once by table and column and attached to the retrieved
+tables. reference_index() applies them automatically for the selected column.
+The reserved alias table is not returned in data and cannot be requested directly.
 }
 \examples{
 # Choose a temporary location for this example.
 reference_cache_directory <- tempfile("references-")
 # Configure the reference catalogue sources.
 reference_source_configuration <- reference_source(
-  system.file("examples", "survey", "catalogue", package = "form.references"),
-  reference_cache_directory, catalogue = "code_lists")
+  system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"),
+  reference_cache_directory)
 # Retrieve the selected tables and verify their checksums.
 reference_tables <- get_reference_tables(c("stations", "observers"), reference_source_configuration)
 # Display the selected reference rows or values.

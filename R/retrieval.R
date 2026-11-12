@@ -7,13 +7,19 @@
 #' @return Verified tables, paths, catalogue rows and publication metadata.
 #' @details CSV values remain text, including leading zeros. The source selects
 #'   the catalogue; the caller supplies its table IDs. No model interpretation occurs.
+#'   When present, the reserved _aliases_ table (domain catalogue) is retrieved too,
+#'   through the same source and verified cache. Its columns are table, column,
+#'   alias and canonical. Alias targets are checked for the retrieved tables.
+#'   Aliases are grouped once by table and column and attached to the retrieved
+#'   tables. reference_index() applies them automatically for the selected column.
+#'   The reserved alias table is not returned in data and cannot be requested directly.
 #' @examples
 #' # Choose a temporary location for this example.
 #' reference_cache_directory <- tempfile("references-")
 #' # Configure the reference catalogue sources.
 #' reference_source_configuration <- reference_source(
-#'   system.file("examples", "survey", "catalogue", package = "form.references"),
-#'   reference_cache_directory, catalogue = "code_lists")
+#'   system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"),
+#'   reference_cache_directory)
 #' # Retrieve the selected tables and verify their checksums.
 #' reference_tables <- get_reference_tables(c("stations", "observers"), reference_source_configuration)
 #' # Display the selected reference rows or values.
@@ -24,10 +30,13 @@
 get_reference_tables <- function(ids, source, offline = FALSE) {
   if (!is.character(ids) || anyNA(ids) || any(!nzchar(ids)))
     stop("ids must contain nonempty reference names.", call. = FALSE)
+  if ("_aliases_" %in% ids)
+    stop("_aliases_ is reserved; request ordinary reference tables.", call. = FALSE)
   ids <- unique(ids)
   catalogue <- read_reference_catalogue(source, offline = offline)
   missing <- setdiff(ids, catalogue$id)
   if (length(missing)) stop("References absent from catalogue: ", paste(missing, collapse = ", "), call. = FALSE)
+  if (length(ids) && "_aliases_" %in% catalogue$id) ids <- unique(c(ids, "_aliases_"))
   selected <- catalogue[match(ids, catalogue$id), , drop = FALSE]
   paths <- stats::setNames(character(length(ids)), ids)
   tables <- stats::setNames(vector("list", length(ids)), ids)
@@ -36,6 +45,12 @@ get_reference_tables <- function(ids, source, offline = FALSE) {
   for (i in seq_along(ids)) {
     tables[[i]] <- read_reference_csv(paths[i])
   }
+  if ("_aliases_" %in% names(tables)) {
+    grouped_aliases <- validate_reference_aliases(tables[["_aliases_"]], catalogue, tables)
+    for (table in names(grouped_aliases))
+      attr(tables[[table]], "reference_aliases") <- grouped_aliases[[table]]
+  }
+  tables[["_aliases_"]] <- NULL
   list(data = tables, catalogue = selected, paths = paths,
        publication = attr(catalogue, "publication"))
 }
@@ -50,8 +65,8 @@ get_reference_tables <- function(ids, source, offline = FALSE) {
 #' reference_cache_directory <- tempfile("references-")
 #' # Configure the reference catalogue sources.
 #' reference_source_configuration <- reference_source(
-#'   system.file("examples", "survey", "catalogue", package = "form.references"),
-#'   reference_cache_directory, catalogue = "code_lists")
+#'   system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"),
+#'   reference_cache_directory)
 #' # Read the catalogue and display its table IDs and versions.
 #' read_reference_catalogue(reference_source_configuration)[, c("id", "version")]
 #' # Remove the temporary files created by this example.
@@ -66,8 +81,8 @@ read_reference_catalogue <- function(source, offline = FALSE) {
   if (!dir.create(lock, showWarnings = FALSE))
     stop("Reference cache is busy: ", directory, ".", call. = FALSE)
   on.exit(unlink(lock, recursive = TRUE), add = TRUE)
-  metadata_name <- paste0(source$catalogue, ".yaml")
-  csv_name <- paste0(source$catalogue, ".csv")
+  metadata_name <- "catalogue.yaml"
+  csv_name <- "catalogue.csv"
   pointer <- file.path(directory, metadata_name)
   if (offline) {
     if (!file.exists(pointer)) stop("No cached catalogue is available.", call. = FALSE)
@@ -78,7 +93,7 @@ read_reference_catalogue <- function(source, offline = FALSE) {
     fetch_reference_file(source, metadata_name, staged)
     metadata <- read_catalogue_metadata(staged)
   }
-  csv <- cached_reference_file(source, csv_name, metadata$sha256, directory, offline, id = source$catalogue)
+  csv <- cached_reference_file(source, csv_name, metadata$sha256, directory, offline, id = "catalogue")
   catalogue <- read_reference_csv(csv)
   validate_reference_catalogue(catalogue)
   if (!offline) replace_cache_file(staged, pointer)
@@ -115,12 +130,42 @@ validate_reference_catalogue <- function(catalogue) {
   if (!all(required %in% names(catalogue)))
     stop("Catalogue is missing columns: ", paste(setdiff(required, names(catalogue)), collapse = ", "), call. = FALSE)
   if (anyNA(catalogue[required])) stop("Catalogue fields must be text; use empty strings for missing metadata.", call. = FALSE)
-  if (any(!grepl("^[a-z][a-z0-9_.-]*$", catalogue$id)) || anyDuplicated(catalogue$id))
+  if (any(catalogue$id != "_aliases_" & !grepl("^[a-z][a-z0-9_.-]*$", catalogue$id)) || anyDuplicated(catalogue$id))
     stop("Catalogue IDs must be unique lowercase reference names.", call. = FALSE)
   if (any(!grepl("^[a-f0-9]{64}$", catalogue$sha256)))
     stop("Catalogue contains an invalid SHA-256 checksum.", call. = FALSE)
+  if (any(catalogue$id == "_aliases_" & catalogue$domain != "catalogue"))
+    stop("The aliases table must use domain catalogue.", call. = FALSE)
   valid_reference_paths(catalogue$csv_path)
   invisible(NULL)
+}
+
+#' Check catalogue-owned alias rows
+#' @param aliases Downloaded aliases table.
+#' @param catalogue Complete catalogue inventory.
+#' @param tables Retrieved reference tables.
+#' @return Alias mappings grouped by retrieved table and column.
+#' @keywords internal
+validate_reference_aliases <- function(aliases, catalogue, tables) {
+  required <- c("table", "column", "alias", "canonical")
+  if (!identical(names(aliases), required) || anyNA(aliases) ||
+      any(!nzchar(as.matrix(aliases))) ||
+      anyDuplicated(aliases[c("table", "column", "alias")]))
+    stop("Aliases require table,column,alias,canonical and unique nonempty mappings.", call. = FALSE)
+  if (any(!aliases$table %in% setdiff(catalogue$id, "_aliases_")))
+    stop("Aliases refer to a table absent from the catalogue.", call. = FALSE)
+  selected <- aliases[aliases$table %in% names(tables), , drop = FALSE]
+  grouped <- split(selected, selected$table)
+  for (table in names(grouped)) {
+    grouped[[table]] <- split(grouped[[table]], grouped[[table]]$column)
+    for (column in names(grouped[[table]])) {
+      if (!column %in% names(tables[[table]]))
+        stop("Alias lookup column is absent from ", table, ".", column, ".", call. = FALSE)
+      grouped[[table]][[column]] <- reference_table_aliases(
+        grouped[[table]][[column]], table, column, tables[[table]][[column]])
+    }
+  }
+  grouped
 }
 
 #' Require relative resource paths confined to the source
@@ -274,7 +319,7 @@ reference_cache <- function(source) {
   label <- sub("-+$", "", gsub("[^A-Za-z0-9._-]+", "-", label))
   label <- substr(label, 1L, 80L)
   key <- substr(digest::digest(source$url, algo = "sha256", serialize = FALSE), 1L, 12L)
-  file.path(source$cache, paste0(label, "--", key), source$catalogue)
+  file.path(source$cache, paste0(label, "--", key))
 }
 
 #' Name cached CSVs by catalogue ID and content revision

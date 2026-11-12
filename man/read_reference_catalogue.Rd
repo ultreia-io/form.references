@@ -25,8 +25,8 @@ Catalogue and CSV checksums are verified before cached files are replaced.
 reference_cache_directory <- tempfile("references-")
 # Configure the reference catalogue sources.
 reference_source_configuration <- reference_source(
-  system.file("examples", "survey", "catalogue", package = "form.references"),
-  reference_cache_directory, catalogue = "code_lists")
+  system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"),
+  reference_cache_directory)
 # Read the catalogue and display its table IDs and versions.
 read_reference_catalogue(reference_source_configuration)[, c("id", "version")]
 # Remove the temporary files created by this example.
