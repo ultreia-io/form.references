@@ -30,6 +30,22 @@ reference_preparation <- prepare_model_references(
 names(reference_preparation$references)
 ```
 
+Aliases belong to their catalogue and use its authentication, checksums and cache.
+The catalogue row uses ID `_aliases_` and domain `catalogue`.
+Its path is `catalogue_aliases.csv`, relative to its catalogue source directory.
+Each row identifies a table, column, alias and canonical value; canonical targets must exist.
+
+Aliases are grouped once by table and column, then applied automatically by each required lookup.
+Consumers do not extract or pass alias mappings.
+For inspection, a prepared lookup's `$aliases` contains only that lookup's mappings.
+
+```{r}
+# Select the prepared station lookup.
+reference_station_snapshot <- reference_preparation$references[["code_lists/stations/code"]]
+# Find the canonical station row using its alias.
+reference_match_rows(reference_station_snapshot, "OLD-STATION")
+```
+
 ## Retrieve tables explicitly
 
 The survey form model declares the code lists `stations` and `observers` and the registry `contacts`.
@@ -45,7 +61,7 @@ form_model_definition <- form.model::read_form_model("examples/survey/form.yaml"
 reference_cache_directory <- tempfile("survey-cache-")
 # Configure the reference catalogue sources.
 reference_source_configuration <- reference_source(
-  system.file("examples", "survey", "catalogue", package = "form.references"), reference_cache_directory, catalogue = "code_lists"
+  system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"), reference_cache_directory
 )
 # Retrieve the selected code-list tables and verify their checksums.
 reference_values <- get_reference_tables(c("observers", "stations"), reference_source_configuration)
@@ -55,8 +71,7 @@ reference_values$data$stations
 reference_values$data$observers
 # Configure the reference catalogue sources.
 reference_registry_source <- reference_source(
-  system.file("examples", "survey", "catalogue", package = "form.references"), reference_cache_directory,
-  catalogue = "registries"
+  system.file("examples", "survey", "catalogue", "registries", package = "form.references"), reference_cache_directory
 )
 # Retrieve the selected reference tables and verify their checksums.
 reference_registry_tables <- get_reference_tables("contacts", reference_registry_source)
@@ -148,7 +163,7 @@ The website publishes the same source files under `https://ultreia-io.github.io/
 # Use relative website links and installed resources in the package guide.
 if (identical(Sys.getenv("IN_PKGDOWN"), "true")) {
   # Render links relative to the website article.
-  cat("- [Catalogue CSV](../examples/code_lists.csv)\n- [Catalogue metadata YAML](../examples/code_lists.yaml)\n- [Stations CSV](../examples/domain/survey/code_lists/stations.csv)\n- [Observers CSV](../examples/domain/survey/code_lists/observers.csv)\n- [Registry catalogue CSV](../examples/registries.csv)\n- [Registry catalogue YAML](../examples/registries.yaml)\n- [Contacts CSV](../examples/domain/survey/registries/contacts.csv)\n")
+  cat("- [Catalogue CSV](../examples/code_lists/catalogue.csv)\n- [Catalogue metadata YAML](../examples/code_lists/catalogue.yaml)\n- [Stations CSV](../examples/code_lists/stations.csv)\n- [Observers CSV](../examples/code_lists/observers.csv)\n- [Registry catalogue CSV](../examples/registries/catalogue.csv)\n- [Registry catalogue YAML](../examples/registries/catalogue.yaml)\n- [Contacts CSV](../examples/registries/contacts.csv)\n")
 } else {
   # Point readers to the installed package resources.
   cat("Find these files with `system.file(\"examples\", \"survey\", package = \"form.references\")`.\n")
@@ -160,14 +175,13 @@ After website deployment, replace the local source with this URL:
 ```{r, eval=FALSE}
 # Configure the reference catalogue sources.
 reference_source_configuration <- reference_source(
-  "https://ultreia-io.github.io/form.references/examples/", "cache/survey", catalogue = "code_lists"
+  "https://ultreia-io.github.io/form.references/examples/code_lists/", "cache/survey"
 )
 # Retrieve the selected code-list tables and verify their checksums.
 reference_values <- get_reference_tables(c("observers", "stations"), reference_source_configuration)
 # Configure the reference catalogue sources.
 reference_registry_source <- reference_source(
-  "https://ultreia-io.github.io/form.references/examples/", "cache/survey",
-  catalogue = "registries"
+  "https://ultreia-io.github.io/form.references/examples/registries/", "cache/survey"
 )
 # Retrieve the selected reference tables and verify their checksums.
 reference_registry_tables <- get_reference_tables("contacts", reference_registry_source)
@@ -218,10 +232,10 @@ Copy the installed survey reference directory to your private HTTPS directory:
 
 ```{r, eval=FALSE}
 # Locate the installed example resources.
-system.file("examples", "survey", "catalogue", package = "form.references")
+system.file("examples", "survey", "catalogue", "registries", package = "form.references")
 ```
 
-Keep its directory layout. Apache must protect `registries.yaml`, `registries.csv` and all registry CSV files.
+Keep its directory layout. Apache must protect the whole directory, including metadata, data and aliases.
 
 Use the final HTTPS URL: authenticated downloads do not follow redirects.
 

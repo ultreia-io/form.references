@@ -12,7 +12,7 @@
 
 ## About this project
 
-> `form.references` supplies reference data and shared lookup operations to consumers of form models.
+> `form.references` gives consumers a shared way to retrieve reference data and find matching records.
 
 Read the [Terminology](https://ultreia-io.github.io/form.references/articles/terminology.html) for the concepts used throughout this documentation.
 
@@ -20,9 +20,25 @@ A reference catalogue is a collection of tables containing values that form cons
 
 A form model identifies the catalogue, table and lookup used by each field that needs reference data.
 
-`form.references` retrieves the required tables and matches text values using aliases and configurable case sensitivity.
+Catalogue locations and lookup rules are configured once, rather than implemented separately by each consumer.
 
 Exporters, importers and validators can share this configuration and reuse the same reference data.
+
+## Features
+
+**Catalogue configuration and retrieval**
+
+- Configure catalogue sources and lookup rules in YAML.
+- Retrieve catalogues from local directories or HTTP sources, including authenticated sources.
+- Verify checksums and cache downloaded data for offline reuse.
+
+**Reference preparation and matching**
+
+- Prepare the tables and lookups required by a form model.
+- Match text values using exact matching, case settings and name matching.
+- Apply catalogue-owned aliases automatically.
+- Return canonical values and complete records, preserving multiple matches.
+- Inspect lookup settings, aliases and source provenance.
 
 ## Related packages
 
