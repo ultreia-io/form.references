@@ -9,13 +9,12 @@ reference_source(
   cache,
   headers = NULL,
   timeout = 60,
-  max_connections = 4L,
-  catalogue = "catalogue"
+  max_connections = 4L
 )
 }
 \arguments{
 \item{url}{HTTP(S) base URL or local directory containing the selected
-catalogue's YAML and CSV files. URLs must not contain credentials, query strings or fragments.}
+catalogue.yaml and catalogue.csv files. URLs must not contain credentials, query strings or fragments.}
 
 \item{cache}{Local cache directory. Different sources receive separate
 subdirectories. Use separate caches for separate authenticated identities.}
@@ -26,8 +25,6 @@ request time. NULL sends no authentication headers.}
 \item{timeout}{Positive request timeout in seconds.}
 
 \item{max_connections}{Maximum simultaneous CSV downloads. The default is four.}
-
-\item{catalogue}{Catalogue filename stem, such as "catalogue". Selects its YAML and CSV files.}
 }
 \value{
 A reference_source configuration. No files are downloaded.
@@ -42,8 +39,8 @@ Authenticated requests do not follow redirects; supply the final base URL.
 \examples{
 # Configure the reference catalogue sources.
 reference_source_configuration <- reference_source(
-  system.file("examples", "survey", "catalogue", package = "form.references"),
-                           cache = tempfile("references-"), catalogue = "code_lists")
+  system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"),
+                           cache = tempfile("references-"))
 # Configure the reference catalogue sources.
 reference_source_configuration
 }

@@ -77,7 +77,7 @@ check_reference_configuration <- function(configuration) {
 #'   reference_source object and table lookup definitions. No data is downloaded.
 #' @details The packaged schema/references-1.0.0.yaml schema checks the required
 #'   schema_version. Each catalogue declares source and tables;
-#'   catalogue names select the matching YAML and CSV filenames;
+#'   each source directory contains catalogue.yaml and catalogue.csv;
 #'   lookup names are column names. Relative source and cache paths resolve from
 #'   the YAML directory. The schema uses form.references/schema/1, not JSON Schema.
 #'
@@ -103,14 +103,13 @@ read_reference_configuration <- function(path, prompt = FALSE) {
   directory <- dirname(normalizePath(path, winslash = "/", mustWork = TRUE))
   for (name in names(configuration$catalogues)) {
     configuration$catalogues[[name]]$source <- reference_source_configuration(
-      configuration$catalogues[[name]]$source, prompt, directory, catalogue = name)
+      configuration$catalogues[[name]]$source, prompt, directory)
   }
   class(configuration) <- "reference_configuration"
   configuration
 }
 
-reference_source_configuration <- function(config, prompt, directory, catalogue) {
-  config$catalogue <- catalogue
+reference_source_configuration <- function(config, prompt, directory) {
   for (name in names(config)) {
     if (inherits(config[[name]], "reference_env"))
       config[[name]] <- reference_environment_value(
@@ -143,14 +142,13 @@ reference_source_configuration <- function(config, prompt, directory, catalogue)
 #' Configure a reference source
 #'
 #' @param url HTTP(S) base URL or local directory containing the selected
-#'   catalogue's YAML and CSV files. URLs must not contain credentials, query strings or fragments.
+#'   catalogue.yaml and catalogue.csv files. URLs must not contain credentials, query strings or fragments.
 #' @param cache Local cache directory. Different sources receive separate
 #'   subdirectories. Use separate caches for separate authenticated identities.
 #' @param headers Named HTTP header values, or a function returning them at
 #'   request time. NULL sends no authentication headers.
 #' @param timeout Positive request timeout in seconds.
 #' @param max_connections Maximum simultaneous CSV downloads. The default is four.
-#' @param catalogue Catalogue filename stem, such as "catalogue". Selects its YAML and CSV files.
 #' @return A reference_source configuration. No files are downloaded.
 #' @details Credentials stay in memory and are never written into the cache.
 #'   Authenticated requests do not follow redirects; supply the final base URL.
@@ -158,17 +156,14 @@ reference_source_configuration <- function(config, prompt, directory, catalogue)
 #' @examples
 #' # Configure the reference catalogue sources.
 #' reference_source_configuration <- reference_source(
-#'   system.file("examples", "survey", "catalogue", package = "form.references"),
-#'                            cache = tempfile("references-"), catalogue = "code_lists")
+#'   system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"),
+#'                            cache = tempfile("references-"))
 #' # Configure the reference catalogue sources.
 #' reference_source_configuration
 reference_source <- function(url, cache, headers = NULL, timeout = 60,
-                             max_connections = 4L, catalogue = "catalogue") {
+                             max_connections = 4L) {
   scalar_text(url, "url")
   scalar_text(cache, "cache")
-  if (!is.character(catalogue) || length(catalogue) != 1L || is.na(catalogue) ||
-      !grepl("^[A-Za-z0-9][A-Za-z0-9_-]*$", catalogue))
-    stop("catalogue must be a filename stem using letters, digits, underscores or hyphens.", call. = FALSE)
   if (!is.numeric(timeout) || length(timeout) != 1L || is.na(timeout) ||
       !is.finite(timeout) || timeout <= 0) stop("timeout must be a positive number.", call. = FALSE)
   if (!is.numeric(max_connections) || length(max_connections) != 1L ||
@@ -186,7 +181,6 @@ reference_source <- function(url, cache, headers = NULL, timeout = 60,
   }
   if (!is.function(headers)) reference_headers(headers)
   structure(list(url = url, cache = path.expand(cache), remote = remote,
-                 catalogue = catalogue,
                  headers = headers, timeout = timeout,
                  max_connections = as.integer(max_connections)), class = "reference_source")
 }

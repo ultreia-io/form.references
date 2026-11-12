@@ -21,7 +21,7 @@ Read catalogue sources and lookup definitions
 \details{
 The packaged schema/references-1.0.0.yaml schema checks the required
 schema_version. Each catalogue declares source and tables;
-catalogue names select the matching YAML and CSV filenames;
+each source directory contains catalogue.yaml and catalogue.csv;
 lookup names are column names. Relative source and cache paths resolve from
 the YAML directory. The schema uses form.references/schema/1, not JSON Schema.
 
