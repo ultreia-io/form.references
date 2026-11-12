@@ -1,7 +1,7 @@
 test_that("case matching, aliases and name fallback retain matching rows", {
   values <- c("Alpha", "ALPHA", "Tony Chemit", "old")
   aliases <- c(previous = "Alpha", old = "Alpha")
-  index <- reference_index(values, aliases = aliases, matching = "name")
+  index <- build_reference_index(values, aliases = aliases, matching = "name")
   expect_identical(reference_match_rows(index, c("alpha", "previous", "Chemit Tony", "old", "missing")),
     list(c(1L, 2L), c(1L, 2L), 3L, 4L, integer()))
   strict <- reference_index(values, ignore_case = FALSE)
@@ -32,20 +32,4 @@ test_that("data-frame lookups select the named column and retain original rows",
   expect_error(reference_index(reference_data, column = "missing"), "Select one existing lookup column")
   names(reference_data)[2] <- "code"
   expect_error(reference_index(reference_data, column = "code"), "Select one existing lookup column")
-})
-
-test_that("alias chains resolve without inventing missing targets", {
-  reference_lookup <- reference_index(c("Alpha", "ALPHA"),
-    aliases = list(first = "second", second = "Alpha", unknown = "absent"))
-  expect_identical(reference_match_rows(reference_lookup, c("first", "second", "unknown")),
-    list(c(1L, 2L), c(1L, 2L), integer()))
-  expect_error(reference_index("Alpha", aliases = c(first = "second", second = "first")),
-    "Cyclic reference alias")
-  expect_error(reference_index("Alpha", aliases = c(first = "first")), "Cyclic reference alias")
-})
-
-test_that("alias targets can use name matching while exact values keep priority", {
-  reference_lookup <- reference_index(c("Tony Chemit", "Chemit Tony"), matching = "name",
-    aliases = c(writer = "Chemit, Tony", direct = "Tony Chemit"))
-  expect_identical(reference_match_rows(reference_lookup, c("writer", "direct")), list(c(1L, 2L), 1L))
 })

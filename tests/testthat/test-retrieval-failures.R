@@ -1,6 +1,6 @@
 # Serve packaged catalogue bytes through mocked curl calls, without network access.
 mock_reference_downloads <- function(failure = NULL, envir = parent.frame()) {
-  fixture_directory <- system.file("examples", "survey", "catalogue", package = "form.references")
+  fixture_directory <- system.file("examples", "survey", "catalogue", "code_lists", package = "form.references")
   requests <- new.env(parent = emptyenv())
   requests$batches <- list()
   requests$files <- character()
@@ -30,13 +30,13 @@ mock_reference_downloads <- function(failure = NULL, envir = parent.frame()) {
 
 test_that("remote tables retain requested order and can be reused offline", {
   requests <- mock_reference_downloads()
-  source <- reference_source("https://example.org/", withr::local_tempdir(), catalogue = "code_lists")
+  source <- reference_source("https://example.org/", withr::local_tempdir())
   reference_tables <- get_reference_tables(c("stations", "observers"), source)
   expect_named(reference_tables$data, c("stations", "observers"))
   expect_identical(reference_tables$data$stations$code, c("001", "002", "ST01", "ST02"))
   expect_identical(reference_tables$data$observers$code, c("ALICE", "BOB", "observer-1", "observer-2"))
   expect_length(requests$batches, 1L)
-  expect_length(requests$batches[[1L]], 2L)
+  expect_length(requests$batches[[1L]], 3L)
   expect_false(any(file.exists(requests$files)))
   expect_identical(get_reference_tables(c("stations", "observers"), source, offline = TRUE)$data,
     reference_tables$data)
@@ -44,10 +44,9 @@ test_that("remote tables retain requested order and can be reused offline", {
 
 test_that("remote downloads respect the configured batch size", {
   requests <- mock_reference_downloads()
-  source <- reference_source("https://example.org/", withr::local_tempdir(),
-    catalogue = "code_lists", max_connections = 1L)
+  source <- reference_source("https://example.org/", withr::local_tempdir(), max_connections = 1L)
   reference_tables <- get_reference_tables(c("observers", "stations"), source)
-  expect_identical(lengths(requests$batches), c(1L, 1L))
+  expect_identical(lengths(requests$batches), c(1L, 1L, 1L))
   expect_named(reference_tables$data, c("observers", "stations"))
 })
 
@@ -56,7 +55,7 @@ test_that("failed remote batches do not publish their staged tables", {
     download = "Could not download reference resource", http = "HTTP 503", checksum = "SHA-256 mismatch")
   for (failure in names(scenarios)) local({
     requests <- mock_reference_downloads(failure)
-    source <- reference_source("https://example.org/", withr::local_tempdir(), catalogue = "code_lists")
+    source <- reference_source("https://example.org/", withr::local_tempdir())
     expect_error(get_reference_tables(c("stations", "observers"), source), scenarios[[failure]])
     expect_false(any(file.exists(requests$files)))
     expect_error(get_reference_tables("stations", source, offline = TRUE), "Verified cache unavailable")
@@ -67,7 +66,7 @@ test_that("failed remote batches do not publish their staged tables", {
 test_that("failed single HTTP requests clean up temporary files", {
   for (failure in c("single-transport", "single-http")) local({
     requests <- mock_reference_downloads(failure)
-    source <- reference_source("https://example.org/", withr::local_tempdir(), catalogue = "code_lists")
+    source <- reference_source("https://example.org/", withr::local_tempdir())
     expected <- if (failure == "single-http") "HTTP 404" else "Could not download reference resource"
     expect_error(read_reference_catalogue(source), expected)
     expect_false(any(file.exists(requests$files)))
@@ -107,9 +106,9 @@ test_that("cache replacement preserves the old file when rename fails", {
 # Make a mutable copy; corruption must never touch the installed examples.
 copy_reference_catalogue <- function(envir = parent.frame()) {
   directory <- withr::local_tempdir(.local_envir = envir)
-  fixture_directory <- system.file("examples", "survey", "catalogue", package = "form.references")
+  fixture_directory <- system.file("examples", "survey", "catalogue", "code_lists", package = "form.references")
   file.copy(fixture_directory, directory, recursive = TRUE)
-  file.path(directory, "catalogue")
+  file.path(directory, "code_lists")
 }
 
 test_that("malformed publication metadata cannot replace the offline catalogue", {
@@ -118,9 +117,9 @@ test_that("malformed publication metadata cannot replace the offline catalogue",
     checksum = function(metadata) { metadata$sha256 <- "invalid"; metadata })
   for (scenario in names(scenarios)) local({
     fixture_directory <- copy_reference_catalogue()
-    source <- reference_source(fixture_directory, withr::local_tempdir(), catalogue = "code_lists")
+    source <- reference_source(fixture_directory, withr::local_tempdir())
     original_catalogue <- read_reference_catalogue(source)
-    metadata_path <- file.path(fixture_directory, "code_lists.yaml")
+    metadata_path <- file.path(fixture_directory, "catalogue.yaml")
     yaml::write_yaml(scenarios[[scenario]](yaml::read_yaml(metadata_path)), metadata_path)
     expected <- c(missing = "must declare", timestamp = "UTC timestamp", checksum = "SHA-256")
     expect_error(read_reference_catalogue(source), expected[[scenario]])
@@ -134,12 +133,12 @@ test_that("malformed catalogue columns and IDs cannot replace verified data", {
     duplicate_column = function(catalogue) { names(catalogue)[2] <- names(catalogue)[1]; catalogue })
   for (scenario in names(scenarios)) local({
     fixture_directory <- copy_reference_catalogue()
-    source <- reference_source(fixture_directory, withr::local_tempdir(), catalogue = "code_lists")
+    source <- reference_source(fixture_directory, withr::local_tempdir())
     original_catalogue <- read_reference_catalogue(source)
-    catalogue_path <- file.path(fixture_directory, "code_lists.csv")
+    catalogue_path <- file.path(fixture_directory, "catalogue.csv")
     catalogue_data <- utils::read.csv(catalogue_path, colClasses = "character", check.names = FALSE)
     utils::write.csv(scenarios[[scenario]](catalogue_data), catalogue_path, row.names = FALSE)
-    metadata_path <- file.path(fixture_directory, "code_lists.yaml")
+    metadata_path <- file.path(fixture_directory, "catalogue.yaml")
     metadata <- yaml::read_yaml(metadata_path)
     metadata$sha256 <- digest::digest(file = catalogue_path, algo = "sha256")
     yaml::write_yaml(metadata, metadata_path)
@@ -150,8 +149,8 @@ test_that("malformed catalogue columns and IDs cannot replace verified data", {
 })
 
 test_that("busy cache locks are respected and preserved for their owner", {
-  source <- reference_source(system.file("examples", "survey", "catalogue", package = "form.references"),
-    withr::local_tempdir(), catalogue = "code_lists")
+  source <- reference_source(system.file("examples", "survey", "catalogue", "code_lists", package = "form.references"),
+    withr::local_tempdir())
   cache_directory <- reference_cache(source)
   dir.create(cache_directory, recursive = TRUE)
   lock_path <- file.path(cache_directory, ".catalogue-lock")
@@ -165,8 +164,8 @@ test_that("busy cache locks are respected and preserved for their owner", {
 
 test_that("failed catalogue reads release their lock so a retry can succeed", {
   fixture_directory <- copy_reference_catalogue()
-  source <- reference_source(fixture_directory, withr::local_tempdir(), catalogue = "code_lists")
-  metadata_path <- file.path(fixture_directory, "code_lists.yaml")
+  source <- reference_source(fixture_directory, withr::local_tempdir())
+  metadata_path <- file.path(fixture_directory, "catalogue.yaml")
   original_metadata <- readLines(metadata_path)
   writeLines("invalid: metadata", metadata_path)
   expect_error(read_reference_catalogue(source), "Catalogue metadata must declare")
