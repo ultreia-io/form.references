@@ -4,15 +4,18 @@
 directory <- "inst/examples/survey/catalogue"
 published_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 for (name in c("code_lists", "registries")) {
-  catalogue <- file.path(directory, paste0(name, ".csv"))
+  source_directory <- file.path(directory, name)
+  catalogue <- file.path(source_directory, "catalogue.csv")
   mapping <- utils::read.csv(catalogue, colClasses = "character", check.names = FALSE,
                              na.strings = NULL, fileEncoding = "UTF-8-BOM")
+  mapping <- mapping[order(mapping$domain, mapping$id),
+                     c("domain", "id", setdiff(names(mapping), c("domain", "id")))]
   mapping$published_at <- published_at
-  mapping$sha256 <- vapply(file.path(directory, mapping$csv_path),
+  mapping$sha256 <- vapply(file.path(source_directory, mapping$csv_path),
                            function(path) digest::digest(file = path, algo = "sha256"), character(1))
   utils::write.table(mapping, catalogue, sep = ",", row.names = FALSE, quote = TRUE,
                      na = "", fileEncoding = "UTF-8")
   writeLines(c(sprintf('published_at: "%s"', published_at),
                sprintf('sha256: "%s"', digest::digest(file = catalogue, algo = "sha256"))),
-             file.path(directory, paste0(name, ".yaml")), useBytes = TRUE)
+             file.path(source_directory, "catalogue.yaml"), useBytes = TRUE)
 }

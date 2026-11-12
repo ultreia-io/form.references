@@ -1,0 +1,3 @@
+table,column,alias,canonical
+stations,code,OLD-STATION,001
+observers,code,OLD-OBSERVER,ALICE
