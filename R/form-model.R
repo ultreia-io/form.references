@@ -34,6 +34,8 @@ resolve_reference_lookups <- function(model, configuration = NULL) {
     for (field in names(definition$sheets[[sheet]]$fields)) {
       binding <- definition$sheets[[sheet]]$fields[[field]]$reference
       if (is.null(binding)) next
+      if (identical(binding$table, "_aliases_"))
+        stop("_aliases_ is reserved for catalogue aliases, not form-model bindings.", call. = FALSE)
       group <- binding$catalogue
       lookup <- configuration$catalogues[[group]]$tables[[binding$table]][[binding$lookup]]
       if (is.null(lookup))
@@ -61,12 +63,16 @@ resolve_reference_lookups <- function(model, configuration = NULL) {
 #' @param configuration Combined configuration from read_reference_configuration().
 #' @param offline Use verified cached files only; defaults to FALSE.
 #' @return A list containing model (the resolved model) and references (named
-#'   snapshots with values, complete rows, lookup settings and provenance).
+#'   indexes with values, complete rows, lookup settings and provenance).
 #'   The supplied model is unchanged.
 #' @details Table IDs and lookup columns come exclusively from the model's resolved
 #'   bindings. Each required table is retrieved once per catalogue. Empty lookup
 #'   values are excluded; duplicate rows and canonical spelling are retained.
-#'   Missing sources, tables or columns raise errors. No validation rules are run.
+#'   Catalogue aliases are grouped once by table and column. Each required lookup
+#'   is indexed with only its own aliases and can be passed to reference_match_rows().
+#'   Alias file paths and checksums are recorded in provenance.
+#'   Missing sources, tables or columns raise errors.
+#'   No validation rules are run.
 #' @examples
 #' # Load the requested form model.
 #' form_model_definition <- form.model::read_form_model("examples/survey/form.yaml", "form.model")
@@ -112,10 +118,19 @@ prepare_model_references <- function(model, configuration, offline = FALSE) {
     values <- data[[lookup$column]]
     selected <- !is.na(values) & nzchar(values)
     sha256 <- catalogue$catalogue$sha256[[match(lookup$table, catalogue$catalogue$id)]]
-    references[[id]] <- list(values = values[selected], version = sha256,
-      data = data[selected, , drop = FALSE], column = lookup$column, lookup = lookup)
+    data <- data[selected, , drop = FALSE]
+    attr(data, "reference_aliases") <- attr(data, "reference_aliases", exact = TRUE)[lookup$column]
+    references[[id]] <- reference_index(data, lookup$column,
+      matching = lookup$matching, ignore_case = lookup$ignore_case)
+    references[[id]]$version <- sha256
+    references[[id]]$lookup <- lookup
     provenance[[id]] <- list(path = catalogue$paths[[lookup$table]], column = lookup$column,
       sha256 = sha256, status = "available")
+    if ("_aliases_" %in% catalogue$catalogue$id) {
+      alias_row <- match("_aliases_", catalogue$catalogue$id)
+      provenance[[id]]$aliases <- list(path = catalogue$paths[["_aliases_"]],
+        sha256 = catalogue$catalogue$sha256[[alias_row]])
+    }
   }
   attr(references, "reference_lookups") <- lookups
   attr(references, "provenance") <- provenance

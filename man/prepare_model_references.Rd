@@ -15,7 +15,7 @@ prepare_model_references(model, configuration, offline = FALSE)
 }
 \value{
 A list containing model (the resolved model) and references (named
-snapshots with values, complete rows, lookup settings and provenance).
+indexes with values, complete rows, lookup settings and provenance).
 The supplied model is unchanged.
 }
 \description{
@@ -25,7 +25,11 @@ Prepare reference values selected by a model
 Table IDs and lookup columns come exclusively from the model's resolved
 bindings. Each required table is retrieved once per catalogue. Empty lookup
 values are excluded; duplicate rows and canonical spelling are retained.
-Missing sources, tables or columns raise errors. No validation rules are run.
+Catalogue aliases are grouped once by table and column. Each required lookup
+is indexed with only its own aliases and can be passed to reference_match_rows().
+Alias file paths and checksums are recorded in provenance.
+Missing sources, tables or columns raise errors.
+No validation rules are run.
 }
 \examples{
 # Load the requested form model.
