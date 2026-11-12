@@ -4,81 +4,44 @@
 #' @param data Reference table, character vector or list of text values. Rows are retained in order.
 #' @param column Lookup column when data is a data frame; otherwise NULL.
 #' @param matching "exact" or "name" for optional normalized-name fallback.
-#' @param aliases Named character vector mapping aliases to lookup values.
-#'   Chains are allowed; cycles are errors. Multiple targets retain all matching rows.
 #' @param ignore_case Ignore case in keys, aliases and name fallback? Defaults to TRUE.
 #' @return A reference_index retaining the original data, values and row indexes.
 #' @details Lookup keys are plain text. Values are never converted to text implicitly.
-#'   Reference matching supports text fields only.
+#'   Reference matching supports text fields only. Catalogue aliases attached to
+#'   the selected column are applied automatically.
+#'   Inspect index$aliases for that lookup's alias-to-canonical mappings.
 #'   Exact matches take precedence over aliases, then name fallback.
 #'   Duplicate rows remain separate matches. No catalogue-specific validity policy
 #'   is applied: callers decide whether any match or exactly one match is required.
-#'   Unknown alias targets remain unmatched. Submitted and reference data are unchanged.
+#'   Submitted and reference values are unchanged.
 #' @examples
 #' # Prepare species.
 #' reference_species_table <- data.frame(code = c("001", "002"), label = c("First", "Second"))
 #' # Prepare reference index.
-#' reference_index <- reference_index(reference_species_table, "code", aliases = c(old = "001"))
+#' reference_index <- reference_index(reference_species_table, "code")
 #' # Prepare reference rows.
-#' reference_rows <- reference_match_rows(reference_index, c("old", "unknown"))
+#' reference_rows <- reference_match_rows(reference_index, c("001", "unknown"))
 #' # Display the selected reference rows or values.
 #' reference_index$data[reference_rows[[1]], , drop = FALSE]
 #' # Display the number of matching rows for each submitted value.
 #' lengths(reference_rows)
 #' @export
 reference_index <- function(data, column = NULL, matching = "exact",
-                            aliases = character(), ignore_case = TRUE) {
-  if (!is.logical(ignore_case) || length(ignore_case) != 1L || is.na(ignore_case))
-    stop("ignore_case must be TRUE or FALSE", call. = FALSE)
-  matching <- match.arg(matching, c("exact", "name"))
-  if (is.data.frame(data)) {
-    if (!is.character(column) || length(column) != 1L || is.na(column) ||
-        sum(names(data) == column) != 1L) stop("Select one existing lookup column", call. = FALSE)
-    values <- data[[column]]
-  } else {
-    if (!is.null(column)) stop("column requires a data frame", call. = FALSE)
-    values <- data
+                            ignore_case = TRUE) {
+  aliases <- if (is.character(column) && length(column) == 1L && !is.na(column))
+    attr(data, "reference_aliases", exact = TRUE)[[column]] else NULL
+  if (is.null(aliases)) aliases <- character()
+  if (length(aliases)) {
+    reference_table_aliases(data.frame(alias = names(aliases), canonical = unname(aliases)),
+      "reference", column, data[[column]], ignore_case)
   }
-  if (!(is.atomic(values) || is.list(values)) || is.data.frame(values) || !is.null(dim(values)))
-    stop("Reference values must be a character vector or list of text values", call. = FALSE)
-  scalars <- lapply(seq_along(values), function(i) values[[i]])
-  if (any(!vapply(scalars, reference_text, logical(1))))
-    stop("Malformed reference keys", call. = FALSE)
-  if (is.list(aliases)) {
-    if (any(!vapply(aliases, reference_text, logical(1))))
-      stop("Invalid reference aliases", call. = FALSE)
-    aliases <- vapply(aliases, identity, character(1))
-  }
-  if (!is.character(aliases) || !is.null(dim(aliases)) ||
-      (length(aliases) && (is.null(names(aliases)) || anyNA(names(aliases)) ||
-      any(!nzchar(names(aliases))) || anyNA(aliases) || any(!nzchar(aliases)))))
-    stop("Invalid reference aliases", call. = FALSE)
-  exact <- split(seq_along(scalars), vapply(scalars, reference_key, character(1), ignore_case = ignore_case))
-  normalized <- if (matching == "name") split(seq_along(scalars),
-    normalized_name_key(vapply(scalars, identity, character(1)), ignore_case)) else list()
-  pairs <- unique(data.frame(alias = names(aliases), target = unname(aliases)))
-  if (ignore_case && nrow(pairs)) {
-    pairs <- unique(data.frame(alias = tolower(pairs$alias), target = tolower(pairs$target)))
-  }
-  lookup_aliases <- if (nrow(pairs)) split(pairs$target, pairs$alias) else list()
-  resolve <- function(value, seen = character()) {
-    rows <- exact[[reference_key(value, ignore_case)]]
-    if (length(rows)) return(rows)
-    if (value %in% seen) stop("Cyclic reference alias: ", value, call. = FALSE)
-    if (value %in% names(lookup_aliases)) return(sort(unique(as.integer(unlist(
-      lapply(lookup_aliases[[value]], resolve, seen = c(seen, value)), use.names = FALSE)))))
-    key <- if (matching == "name") normalized_name_key(value, ignore_case) else NA_character_
-    if (!is.na(key) && length(normalized[[key]])) normalized[[key]] else integer()
-  }
-  alias_rows <- lapply(names(lookup_aliases), resolve)
-  names(alias_rows) <- names(lookup_aliases)
-  structure(list(data = data, column = column, values = values,
-    matching = matching, ignore_case = ignore_case, aliases = aliases, exact = exact,
-    normalized = normalized, alias_rows = alias_rows), class = "reference_index")
+  if (!is.null(attr(data, "reference_aliases", exact = TRUE)))
+    attr(data, "reference_aliases") <- if (length(aliases)) stats::setNames(list(aliases), column) else NULL
+  build_reference_index(data, column, matching, aliases, ignore_case)
 }
 
 #' Find matching reference rows
-#' @param index Lookup prepared with reference_index().
+#' @param index Lookup from reference_index() or prepare_model_references().
 #' @param values Character vector or list of text values; NULL and NA indicate missing values.
 #' @return One integer vector per input value, containing matching positions in
 #'   index$data and index$values. Unknown or missing values return integer(0).
@@ -139,6 +102,61 @@ normalized_name_key <- function(x, ignore_case = TRUE) {
 }
 
 # Internal helpers ----------------------------------------------------------
+
+# Build an index after catalogue aliases have been selected internally.
+build_reference_index <- function(data, column = NULL, matching = "exact",
+                                  aliases = character(), ignore_case = TRUE) {
+  if (!is.logical(ignore_case) || length(ignore_case) != 1L || is.na(ignore_case))
+    stop("ignore_case must be TRUE or FALSE", call. = FALSE)
+  matching <- match.arg(matching, c("exact", "name"))
+  if (is.data.frame(data)) {
+    if (!is.character(column) || length(column) != 1L || is.na(column) ||
+        sum(names(data) == column) != 1L) stop("Select one existing lookup column", call. = FALSE)
+    values <- data[[column]]
+  } else {
+    if (!is.null(column)) stop("column requires a data frame", call. = FALSE)
+    values <- data
+  }
+  if (!(is.atomic(values) || is.list(values)) || is.data.frame(values) || !is.null(dim(values)))
+    stop("Reference values must be a character vector or list of text values", call. = FALSE)
+  scalars <- lapply(seq_along(values), function(i) values[[i]])
+  if (any(!vapply(scalars, reference_text, logical(1))))
+    stop("Malformed reference keys", call. = FALSE)
+  exact <- split(seq_along(scalars), vapply(scalars, reference_key, character(1), ignore_case = ignore_case))
+  normalized <- if (matching == "name") split(seq_along(scalars),
+    normalized_name_key(vapply(scalars, identity, character(1)), ignore_case)) else list()
+  alias_rows <- exact[reference_key(unname(aliases), ignore_case)]
+  names(alias_rows) <- if (ignore_case) tolower(names(aliases)) else names(aliases)
+  structure(list(data = data, column = column, values = values,
+    matching = matching, ignore_case = ignore_case, aliases = aliases, exact = exact,
+    normalized = normalized, alias_rows = alias_rows), class = "reference_index")
+}
+
+
+#' Select catalogue aliases for one lookup
+#' @param aliases Alias rows already selected for one table and column, or NULL.
+#' @param table Reference table identifier.
+#' @param column Lookup column.
+#' @param values Canonical values from the reference table.
+#' @param ignore_case Whether comparison ignores case.
+#' @return A named character vector mapping aliases to canonical values.
+#' @keywords internal
+reference_table_aliases <- function(aliases, table, column, values, ignore_case = FALSE) {
+  if (is.null(aliases)) return(character())
+  selected <- aliases
+  if (!nrow(selected)) return(character())
+  if (any(!selected$canonical %in% values))
+    stop("Alias targets are absent from ", table, ".", column, ".", call. = FALSE)
+  alias_keys <- reference_key(selected$alias, ignore_case)
+  target_keys <- reference_key(selected$canonical, ignore_case)
+  value_keys <- reference_key(values, ignore_case)
+  if (any(alias_keys %in% value_keys))
+    stop("Aliases conflict with canonical values in ", table, ".", column, ".", call. = FALSE)
+  if (any(vapply(split(target_keys, alias_keys),
+      function(targets) length(unique(targets)) > 1L, logical(1))))
+    stop("Conflicting alias targets in ", table, ".", column, ".", call. = FALSE)
+  stats::setNames(selected$canonical, selected$alias)
+}
 
 #' Encode a text comparison key
 #' @param x One nonmissing text value.

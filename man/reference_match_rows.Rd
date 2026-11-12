@@ -7,7 +7,7 @@
 reference_match_rows(index, values)
 }
 \arguments{
-\item{index}{Lookup prepared with reference_index().}
+\item{index}{Lookup from reference_index() or prepare_model_references().}
 
 \item{values}{Character vector or list of text values; NULL and NA indicate missing values.}
 }

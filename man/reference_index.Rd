@@ -4,13 +4,7 @@
 \alias{reference_index}
 \title{Build a shared lookup over reference rows}
 \usage{
-reference_index(
-  data,
-  column = NULL,
-  matching = "exact",
-  aliases = character(),
-  ignore_case = TRUE
-)
+reference_index(data, column = NULL, matching = "exact", ignore_case = TRUE)
 }
 \arguments{
 \item{data}{Reference table, character vector or list of text values. Rows are retained in order.}
@@ -18,9 +12,6 @@ reference_index(
 \item{column}{Lookup column when data is a data frame; otherwise NULL.}
 
 \item{matching}{"exact" or "name" for optional normalized-name fallback.}
-
-\item{aliases}{Named character vector mapping aliases to lookup values.
-Chains are allowed; cycles are errors. Multiple targets retain all matching rows.}
 
 \item{ignore_case}{Ignore case in keys, aliases and name fallback? Defaults to TRUE.}
 }
@@ -32,19 +23,21 @@ Build a shared lookup over reference rows
 }
 \details{
 Lookup keys are plain text. Values are never converted to text implicitly.
-Reference matching supports text fields only.
+Reference matching supports text fields only. Catalogue aliases attached to
+the selected column are applied automatically.
+Inspect index$aliases for that lookup's alias-to-canonical mappings.
 Exact matches take precedence over aliases, then name fallback.
 Duplicate rows remain separate matches. No catalogue-specific validity policy
 is applied: callers decide whether any match or exactly one match is required.
-Unknown alias targets remain unmatched. Submitted and reference data are unchanged.
+Submitted and reference values are unchanged.
 }
 \examples{
 # Prepare species.
 reference_species_table <- data.frame(code = c("001", "002"), label = c("First", "Second"))
 # Prepare reference index.
-reference_index <- reference_index(reference_species_table, "code", aliases = c(old = "001"))
+reference_index <- reference_index(reference_species_table, "code")
 # Prepare reference rows.
-reference_rows <- reference_match_rows(reference_index, c("old", "unknown"))
+reference_rows <- reference_match_rows(reference_index, c("001", "unknown"))
 # Display the selected reference rows or values.
 reference_index$data[reference_rows[[1]], , drop = FALSE]
 # Display the number of matching rows for each submitted value.
