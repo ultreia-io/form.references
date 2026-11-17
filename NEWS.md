@@ -1,3 +1,14 @@
+# form.references 0.4.0
+
+* [feature] Read versioned catalogue mappings with independent source and target configurations.
+* [feature] Resolve CSV correspondences, source properties and unchanged inputs with explicit unresolved statuses.
+* [fix] Stop creating `~/.cache/form.references`; use temporary session caches by default.
+* [fix] Preserve explicit persistent caches and clean up temporary caches in examples and vignettes.
+* [docs] Rephrase DESCRIPTION to avoid CRAN spelling notes for "checksums" and "lookups".
+* [docs] Map two survey catalogues with separate runnable examples for each mapping behaviour and diagnostic.
+* [docs] Document all S3 classes and both configuration schemas.
+* [docs] Provide individual resource downloads and a ZIP archive named with the package version.
+
 # form.references 0.3.0
 
 * [feature] Configure catalogue sources and lookups in one versioned YAML file.
