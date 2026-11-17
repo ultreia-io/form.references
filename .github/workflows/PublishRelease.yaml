@@ -5,6 +5,13 @@ on:
   pull_request:
     branches: [main]
     types: [closed]
+  # Retry submission of an existing release without rebuilding or publishing it again.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to submit to CRAN
+        required: true
+        type: string
 
 # Checks only read sources; publication and Pages jobs request their own write permissions.
 permissions:
@@ -162,14 +169,17 @@ jobs:
   cran:
     name: Submit to CRAN
     needs: publish
+    if: >-
+      always() && !cancelled() &&
+      (needs.publish.result == 'success' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
-      RELEASE_TAG: ${{ needs.publish.outputs.tag }}
-      RELEASE_ARCHIVE: form.references_${{ needs.publish.outputs.tag }}.tar.gz
+      RELEASE_TAG: ${{ inputs.tag || needs.publish.outputs.tag }}
+      RELEASE_ARCHIVE: form.references_${{ inputs.tag || needs.publish.outputs.tag }}.tar.gz
     steps:
       # Release assets survive reruns; an unfinished attempt must be reviewed before retrying.
       - name: Check previous CRAN submission
@@ -188,7 +198,7 @@ jobs:
         if: steps.submission.outputs.skip != 'true'
         uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ needs.publish.outputs.commit }}
+          ref: ${{ inputs.tag || needs.publish.outputs.commit }}
       - name: Set up R
         if: steps.submission.outputs.skip != 'true'
         uses: r-lib/actions/setup-r@v2.12.1
@@ -196,11 +206,8 @@ jobs:
           use-public-rspm: true
       - name: Install submission tools
         if: steps.submission.outputs.skip != 'true'
-        uses: r-lib/actions/setup-r-dependencies@v2.12.1
-        with:
-          packages: |
-            any::xfun
-            any::curl
+        shell: Rscript {0}
+        run: install.packages(c("xfun", "curl"), repos = "https://cloud.r-project.org")
       - name: Download and verify the release archive
         if: steps.submission.outputs.skip != 'true'
         shell: bash
