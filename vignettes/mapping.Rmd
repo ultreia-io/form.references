@@ -1,0 +1,475 @@
+---
+title: "Catalogue mapping contract"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Catalogue mapping contract}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Scope
+
+A mapping declares correspondences between two independently configured reference catalogues.
+
+Catalogue definitions and lookup behaviour remain in the existing reference configurations.
+
+## One survey, two catalogues
+
+The survey model already expects station codes such as `001` and observer codes such as `ALICE`.
+
+A second catalogue represents the same stations and observers using technical IDs.
+
+The model stays unchanged: the mapping supplies the reference codes it already expects.
+
+All example files live together under `examples/survey/` in the installed package.
+
+Download the complete example from [Package resources](resources.html#example-downloads).
+
+### Load the catalogues once
+
+Both catalogues are bundled with the package; this example requires no network access.
+
+Cache paths are omitted, so each source receives a temporary cache for this R session.
+
+```{r mapping-setup}
+# Load the reference catalogue and mapping functions.
+library(form.references)
+# Locate the survey files bundled with the installed package.
+resources_directory <- system.file("examples", "survey", package = "form.references")
+# Read the source catalogue configuration, which uses technical IDs.
+source_references_configuration <- read_reference_configuration(
+  file.path(resources_directory, "references-source.yaml"))
+# Read the target configuration, which supplies the survey model's codes.
+target_references_configuration <- read_reference_configuration(
+  file.path(resources_directory, "references.yaml"))
+# Bind both configurations to the names used in mapping.yaml.
+references_configurations <- list(
+  source = source_references_configuration,
+  target = target_references_configuration)
+# Load the source station and observer tables into a temporary cache.
+source_tables <- get_reference_tables(
+  c("stations", "observers"), source_references_configuration$catalogues$code_lists$source)
+# Load the target station and observer tables into a separate temporary cache.
+target_tables <- get_reference_tables(
+  c("stations", "observers"), target_references_configuration$catalogues$code_lists$source)
+```
+
+The two station tables describe the same sites with different identifiers.
+
+```{r mapping-station-tables}
+# Display the source stations and their technical IDs.
+knitr::kable(source_tables$data$stations, caption = "Source stations")
+# Display the corresponding target stations and their survey codes.
+knitr::kable(target_tables$data$stations, caption = "Target stations")
+```
+
+The observer tables share names rather than technical IDs.
+
+```{r mapping-observer-tables}
+# Display the source observers, including the deliberate data issues.
+knitr::kable(source_tables$data$observers, caption = "Source observers")
+# Display the target observer names and codes used by the survey model.
+knitr::kable(target_tables$data$observers, caption = "Target observers")
+```
+
+Missing names, duplicate IDs and unmatched entries are deliberate examples of unresolved source data.
+
+### Read and prepare the mapping
+
+The [resource article](resources.html#survey-mapping-configuration) presents the mapping used below.
+
+The station mapping uses a CSV; the observer rebound reads the source record's `name` property.
+
+The second observer alternative accepts a supplied name directly, without looking up a source record.
+
+The CSV includes duplicate and conflicting pairs so their different outcomes can be demonstrated.
+
+Preparation reuses the verified caches populated above and builds the required indexes.
+
+```{r mapping-prepare}
+# Read the mapping declarations and resolve their lookup defaults and file paths.
+mapping_configuration <- read_mapping_configuration(file.path(resources_directory, "mapping.yaml"))
+# Prepare lookup indexes and correspondences using the cached catalogue data.
+mapping_references <- prepare_mapping_references(mapping_configuration, references_configurations, offline = TRUE)
+```
+
+Each statement below displays the source value, target value, resolution status and stage.
+
+## Successful correspondences
+
+### DIRECT through a CSV
+
+`station-north` maps to target code `001`; the leading zeros are preserved because codes remain text.
+
+```{r mapping-direct}
+# Resolve the station through the CSV and display the four summary columns.
+map_reference_values(mapping_references, "stations", "station-north")[, 1:4]
+```
+
+### REBOUND through a source property
+
+`person-alice` finds a source observer and reads `Example Alice`.
+
+The target name lookup normalizes the word order to match `Alice Example` and returns code `ALICE`.
+
+```{r mapping-rebound}
+# Find the source observer by ID, then match its name in the target catalogue.
+map_reference_values(mapping_references, "observers", "person-alice", source_lookup = "id")[, 1:4]
+```
+
+### DIRECT with unchanged input
+
+Supplying `Alice Example` directly needs only the target name lookup; no source record is read.
+
+```{r mapping-unchanged}
+# Send the supplied name directly to the target observer lookup.
+map_reference_values(mapping_references, "observers", "Alice Example", source_lookup = "name")[, 1:4]
+```
+
+## Catalogue aliases and matching
+
+### A source alias applies during rebound
+
+The source ID alias `former-alice` resolves to `person-alice` before the name is read.
+
+```{r mapping-source-alias}
+# Resolve the former source ID through its catalogue alias before reading the name.
+map_reference_values(mapping_references, "observers", "former-alice", source_lookup = "id")[, 1:4]
+```
+
+### A target alias applies after a CSV correspondence
+
+`station-legacy` maps to `OLD-STATION`; the target catalogue alias then resolves it to `001`.
+
+```{r mapping-target-alias}
+# Translate the CSV value OLD-STATION through the target catalogue's code alias.
+map_reference_values(mapping_references, "stations", "station-legacy")[, 1:4]
+```
+
+### CSV matching does not apply source aliases or case folding
+
+`former-north` is a source alias, but only exact CSV keys are accepted here.
+
+```{r mapping-csv-exact}
+# Show that a source alias and an uppercase variant are not exact CSV keys.
+map_reference_values(mapping_references, "stations", c("former-north", "STATION-NORTH"))[, 1:4]
+```
+
+### Unchanged input does not apply source aliases
+
+`A. Example` is an alias in the source catalogue only; sending it directly to the target produces `no_match`.
+
+```{r mapping-unchanged-source-alias}
+# Show that an alias belonging only to the source is unknown to the target lookup.
+map_reference_values(mapping_references, "observers", "A. Example", source_lookup = "name")[, 1:4]
+```
+
+### Catalogue lookups retain their configured case handling
+
+The source ID lookup ignores case, so `PERSON-BOB` resolves to observer `BOB`.
+
+```{r mapping-ignore-case}
+# Resolve the uppercase ID using the source lookup's ignore_case setting.
+map_reference_values(mapping_references, "observers", "PERSON-BOB", source_lookup = "id")[, 1:4]
+```
+
+### Normalized names work after rebound
+
+`person-alice-formatted` supplies `Example, Alice`; the target normalizes this to match `Alice Example`.
+
+```{r mapping-rebound-normalized}
+# Match the source name Example, Alice after normalizing punctuation and word order.
+map_reference_values(mapping_references, "observers", "person-alice-formatted", source_lookup = "id")[, 1:4]
+```
+
+### Name normalization is not fuzzy matching
+
+Word order and punctuation normalize, but a misspelling such as `Alic Example` remains unmatched.
+
+```{r mapping-normalized-not-fuzzy}
+# Compare a normalized match with a misspelling that remains unresolved.
+map_reference_values(mapping_references, "observers", c("Example, Alice", "Alic Example"), source_lookup = "name")[, 1:4]
+```
+
+## Unresolved inputs
+
+### Missing input
+
+`NULL`, `NA` and empty text produce `missing_input` before either catalogue is queried.
+
+```{r mapping-missing-input}
+# Show the missing_input result for each supported representation of absent input.
+map_reference_values(mapping_references, "stations", list(NULL, NA_character_, ""))[, 1:4]
+```
+
+### Missing source record
+
+`person-absent` has no source observer record, so rebound stops with `missing_source_record`.
+
+```{r mapping-missing-source}
+# Report a missing source record without attempting a target lookup.
+map_reference_values(mapping_references, "observers", "person-absent", source_lookup = "id")[, 1:4]
+```
+
+### Missing source property
+
+`person-no-name` exists but has no name to submit to the target, producing `missing_property`.
+
+```{r mapping-missing-property}
+# Report that the source observer exists but its required name is empty.
+map_reference_values(mapping_references, "observers", "person-no-name", source_lookup = "id")[, 1:4]
+```
+
+### No CSV correspondence
+
+`station-unmapped` exists in the source catalogue but has no CSV correspondence.
+
+```{r mapping-missing-correspondence}
+# Report that the supplied station ID has no entry in the correspondence CSV.
+map_reference_values(mapping_references, "stations", "station-unmapped")[, 1:4]
+```
+
+### No automatic fallback to the input
+
+Although `001` is a valid target code, it has no source key in this CSV and remains unresolved.
+
+```{r mapping-no-fallback}
+# Show that an absent CSV key does not fall back to a direct target code lookup.
+map_reference_values(mapping_references, "stations", "001")[, 1:4]
+```
+
+### No target match after a CSV correspondence
+
+`station-absent` has a correspondence to `999`, but that code is absent from the target catalogue.
+
+```{r mapping-missing-target}
+# Report that the CSV's target value 999 is absent from the target catalogue.
+map_reference_values(mapping_references, "stations", "station-absent")[, 1:4]
+```
+
+### No target match after rebound
+
+`person-unlisted` supplies `Casey Newcomer`, who has no target observer record.
+
+```{r mapping-unlisted-person}
+# Report that the source observer's name has no target match.
+map_reference_values(mapping_references, "observers", "person-unlisted", source_lookup = "id")[, 1:4]
+```
+
+### Ambiguous source records
+
+Two source observers share `person-duplicate`; rebound returns `ambiguous` and retains both source row indexes.
+
+```{r mapping-ambiguous-source}
+# Retain both source row indexes when a technical ID identifies two observers.
+map_reference_values(mapping_references, "observers", "person-duplicate", source_lookup = "id")[
+  c("source_value", "target_value", "status", "stage", "source_rows")]
+```
+
+### Conflicting CSV correspondences
+
+`station-conflict` has two different target values; both are retained without selecting either one.
+
+```{r mapping-ambiguous-csv}
+# Display both conflicting correspondence values without choosing a target.
+map_reference_values(mapping_references, "stations", "station-conflict")[
+  c("source_value", "target_value", "status", "stage", "correspondence_values")]
+```
+
+## Selection, reuse and provenance
+
+### Identical pairs do not create ambiguity; repeated inputs retain their order
+
+The repeated `station-north,001` pair represents one correspondence, and every input still gets its own result row.
+
+```{r mapping-repeated-input}
+# Preserve input order and repeated result rows while deduplicating identical CSV pairs.
+map_reference_values(mapping_references, "stations", c("station-south", "station-north", "station-north"))[, 1:4]
+```
+
+### Alternatives require explicit selection
+
+An observer input could be an ID or a name, so omitting the selector produces a configuration error.
+
+```{r mapping-selection-error}
+# Display the selector error as text so the remaining examples can continue.
+tryCatch(map_reference_values(mapping_references, "observers", "person-alice"), error = conditionMessage)
+```
+
+### Prepare only the required target
+
+Preparing only stations needs the target station data and CSV; source rows and observer data are unnecessary.
+
+```{r mapping-selected-target}
+# Prepare only the target station table and its correspondence CSV.
+mapping_station_references <- prepare_mapping_references(
+  mapping_configuration, references_configurations, targets = "stations", offline = TRUE)
+# Resolve a station using that smaller prepared selection.
+map_reference_values(mapping_station_references, "stations", "station-north")[, 1:4]
+```
+
+Unmapped source records do not prevent preparation; resolution considers only the supplied input values.
+
+### Preserve provenance
+
+Results identify the selected mapping, target catalogue revision and correspondence checksum.
+
+```{r mapping-provenance}
+# Retain a complete mapping result, including its provenance attribute.
+result <- map_reference_values(mapping_references, "stations", "station-north")
+# Extract the provenance recorded during preparation and resolution.
+provenance <- attr(result, "provenance")
+# Display the selected source table, lookup, correspondence file and target property.
+provenance$mapping
+# Display the target table identity and its published data version.
+provenance$target_catalogue$table[c("id", "version")]
+# Display the checksum identifying the correspondence file used for this result.
+provenance$correspondence$sha256
+```
+
+### Clean up temporary caches
+
+Remove all temporary caches created by the example after the last mapping statement.
+
+```{r mapping-cleanup}
+# Visit both source and target configurations.
+for (references_configuration in references_configurations) {
+  # Visit each catalogue configured on that side of the mapping.
+  for (catalogue in references_configuration$catalogues) {
+    # Remove its temporary cache after all examples have finished.
+    unlink(catalogue$source$cache, recursive = TRUE)
+  }
+}
+```
+
+## Configuration resources
+
+See [Package resources](resources.html#mapping-configuration-schema) for the schema, fields and defaults.
+
+## Correspondence sources
+
+### Property from a source record
+
+Rebound follows three steps:
+
+1. Find the source record using the effective source lookup.
+2. Read the column named by `source.property` and submit its value to the target lookup.
+3. Return the target record's configured property.
+
+- Both lookups retain their configured aliases, case handling and normalized-name matching.
+- A missing or ambiguous source record remains unresolved before property extraction.
+
+### Explicit correspondence file
+
+The [correspondence file contract](resources.html#correspondence-files) defines the CSV format and paths.
+
+Resolution follows two steps:
+
+1. Match the supplied input **exactly and case-sensitively** against `source_value`.
+2. Submit the corresponding `target_value` to the target lookup, using that lookup's matching behaviour.
+
+The source lookup identifies the input column; it does not load a source record or apply source aliases.
+
+**Repeated correspondences:**
+
+- Identical duplicate pairs represent one correspondence.
+- Several source values may share a target.
+- Conflicting targets for one source value remain ambiguous.
+
+**If no correspondence exists:** the input remains unresolved, without falling back to the input or another value.
+
+### Unchanged input
+
+Without `source.property` or `file`, submit the supplied value directly to the target lookup.
+
+- No source catalogue data is needed.
+- No source aliases are resolved.
+
+## Catalogue matching
+
+Catalogue lookups reuse `reference_index()` and `reference_match_rows()` in this order:
+
+1. Exact matching.
+2. Catalogue aliases.
+3. Configured normalized-name matching.
+
+Keep these distinctions in mind:
+
+- Correspondence files remain separate from catalogue aliases.
+- Multiple matching records remain candidates, even when their requested property values agree.
+- Name normalization supports comparison; it does not prove identity.
+
+## Validation boundaries
+
+Validation happens in stages:
+
+1. **YAML structure:** check the configuration, lookup defaults and duplicate mapping selections without loading data.
+2. **Declarations:** check configuration names, catalogue IDs, table IDs and lookups against reference configurations.
+3. **Loaded resources:** check actual columns and values; check correspondence-file existence and CSV structure.
+
+Within a target table, the source table, source lookup, target lookup and returned property identify an alternative.
+
+Duplicate alternatives and ambiguous selections are rejected; their position in the list never decides the result.
+
+During resolution:
+
+- Rebound needs both catalogues' data; CSV and unchanged-input mappings need target data only.
+- Check coverage only for encountered inputs and reuse lookups for repeated values within the same mapping.
+- Distinguish missing input, missing source records, missing properties, no match and ambiguity.
+- Retain source and target values, the selected mapping, catalogue revisions and correspondence-file checksum.
+
+The caller decides whether an unresolved result blocks a field, row or export.
+
+No correspondence silently substitutes zero, false or an unknown code.
+
+## R API
+
+### From configuration to results
+
+1. **Read** with `read_mapping_configuration(path)`: validate YAML, apply lookup defaults and make file paths absolute.
+2. **Check declarations** with `resolve_mapping_lookups()`: verify configuration, catalogue, table and lookup selections.
+3. **Prepare** with `prepare_mapping_references()`: load selected mappings and their dependencies, and build indexes.
+4. **Resolve** with `map_reference_values()`: translate encountered values for one selected mapping.
+
+Reading the YAML does not open correspondence files or retrieve catalogue data.
+
+### Control preparation and selection
+
+- Omit `targets` to prepare all mappings, or supply only the target tables needed by the current dataset.
+- Preparation shares retrieved tables and lookup indexes; only rebound loads source data.
+- Use `source_table`, `source_lookup`, `target_lookup` and `property` to select one alternative when needed.
+- Selection must identify exactly one alternative before any values are resolved.
+
+### Read the result
+
+The result contains **one row per input**, preserving order and duplicates; repeated inputs share resolution work.
+
+The `status` column explains the outcome:
+
+| Status                  | Meaning                                                   |
+|-------------------------|-----------------------------------------------------------|
+| `resolved`              | A single target value was resolved.                       |
+| `missing_input`         | The input is `NULL`, `NA` or empty text.                  |
+| `missing_source_record` | The source lookup found no record.                        |
+| `missing_property`      | A required source or target property is empty.            |
+| `no_match`              | There is no CSV correspondence or no target match.        |
+| `ambiguous`             | Multiple records or conflicting CSV target values remain. |
+
+The `stage` column locates it: `input`, `source`, `correspondence` or `target`.
+
+Only `resolved` rows receive a `target_value`. Numeric and logical inputs are rejected rather than converted.
+
+Additional details remain available:
+
+- `source_rows` and `target_rows`: matching row indexes.
+- `target_candidates`: candidate target values.
+- `correspondence_values`: values obtained before the target lookup.
+- The `provenance` attribute: selected mapping, YAML checksum, catalogue revisions and correspondence checksum.
+
+Ambiguous source rows remain unresolved even when their extracted properties agree.
+
+### Handle errors separately
+
+Invalid declarations, malformed files, missing columns and retrieval failures raise errors before row resolution.
+
+The caller handles these errors and decides the consequences of unresolved row statuses.

@@ -1,0 +1,350 @@
+---
+title: "Package resources"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Package resources}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This article documents both configuration schemas and provides all the packaged example files.
+
+Use [Getting started](references.html) for reference retrieval and [Catalogue mapping](mapping.html) for resolution.
+
+```{r resource-tables, include=FALSE}
+# Locate the resources supplied by this package.
+resources_directory <- system.file(package = "form.references")
+# Read the package version used in the downloadable archive name.
+resources_version <- read.dcf(file.path(resources_directory, "DESCRIPTION"), fields = "Version")[[1L]]
+# Describe the files shared by the schema and example download tables.
+resources_descriptions <- c(
+  "references-1.0.0.yaml" = "Reference configuration schema.",
+  "mapping-1.0.0.yaml" = "Catalogue mapping schema.",
+  "README.md" = "Directory layout and usage notes.",
+  "references.private.example.yaml" = "Public code lists and a private HTTPS registry template.",
+  "references.yaml" = "Target code lists and the survey contact registry.",
+  "references-source.yaml" = "Source code lists using technical identifiers.",
+  "mapping.yaml" = "Station and observer correspondences between the catalogues.",
+  "catalogue.csv" = "Table IDs, paths, versions, source dates and checksums.",
+  "catalogue.yaml" = "Catalogue publication metadata and checksum.",
+  "catalogue_aliases.csv" = "Aliases attached to individual catalogue lookups.",
+  "stations.csv" = "Station reference records.",
+  "observers.csv" = "Observer reference records.",
+  "contacts.csv" = "Contact registry records.")
+# Render website downloads, or file names for the installed package vignette.
+resource_table <- function(directory, descriptions = resources_descriptions) {
+  # List every file directly inside the selected resource directory.
+  files <- list.files(file.path(resources_directory, directory))
+  # Leave subdirectories to their own download tables.
+  files <- files[!dir.exists(file.path(resources_directory, directory, files))]
+  # Display the packaged file names without depending on a network connection.
+  labels <- sprintf("`%s`", files)
+  # Link each file to its generated website copy when building pkgdown.
+  if (identical(Sys.getenv("IN_PKGDOWN"), "true")) {
+    # Resolve ordinary downloads relative to this article.
+    targets <- paste0("../", file.path(directory, files))
+    # Absolute Markdown URLs prevent pkgdown from rewriting raw downloads to HTML pages.
+    targets[endsWith(files, ".md")] <- paste0("https://ultreia-io.github.io/form.references/",
+      file.path(directory, files[endsWith(files, ".md")]))
+    # Render a download link for each original file.
+    labels <- sprintf("[`%s`](%s)", files, targets)
+  }
+  # Select the descriptions for these files.
+  purposes <- unname(descriptions[files])
+  # Keep new files downloadable until their descriptions are added.
+  purposes[is.na(purposes)] <- "Package resource."
+  # Print a Markdown table for the current output format.
+  cat(knitr::kable(data.frame(File = labels, Purpose = purposes), format = "pipe"), sep = "\n")
+}
+```
+
+## Get the resources
+
+```{r resource-bundle, echo=FALSE, results='asis'}
+# Offer the complete archive on the website and an offline alternative in the installed guide.
+if (identical(Sys.getenv("IN_PKGDOWN"), "true")) {
+  # Link the archive containing the original schema and example directories.
+  cat(sprintf("[Download all schemas and examples (%s, ZIP)](../form.references-resources-%s.zip).\n",
+    resources_version, resources_version))
+} else {
+  # Explain where the same files are available without downloading anything.
+  cat("All schemas and examples are included in the installed package.\n")
+}
+```
+
+The ZIP archive preserves `schema/` and `examples/`, including both survey catalogues and their relative paths.
+
+Its file name includes the package version; each schema retains its own format version.
+
+Keep the survey directory together when using its configurations and correspondence CSVs locally.
+
+You can also locate the installed resources:
+
+```{r installed-resources, eval=FALSE}
+# Locate both versioned schema files.
+system.file("schema", package = "form.references")
+# Locate all examples, including the private registry template.
+system.file("examples", package = "form.references")
+```
+
+## Schemas
+
+Both schemas describe package-specific YAML contracts.
+
+Each configuration declares `schema_version: "1.0.0"`; this version identifies its format.
+
+Catalogue publications, table revisions and correspondence data have separate versions or checksums.
+
+```{r schema-downloads, echo=FALSE, results='asis'}
+# List every packaged schema with its download link.
+resource_table("schema")
+```
+
+The schema files use these building blocks:
+
+- `dialect`, `contract_version` and `root` identify the contract and its starting definition.
+- `definitions` and `ref` define and reuse nodes.
+- `type`, `properties` and `required` describe values and mandatory fields.
+- `values` describes named mapping entries; `min_items` requires a minimum number of entries.
+- `enum`, `min_length`, `minimum` and `exclusive_minimum` constrain individual values.
+- `environment: true` permits a YAML `!env` reference at that location in a reference configuration.
+- The mapping schema adds `one_of`, `sequence`, `items` and `mutually_exclusive`.
+
+Unknown properties, duplicate keys and empty mapping keys are invalid.
+
+YAML expressions are never evaluated. Use the package readers to validate these contracts.
+
+## Reference configuration schema
+
+`references-1.0.0.yaml` defines the `form.references/schema/1` dialect.
+
+Use `reference_schema()` to inspect it and `read_reference_configuration()` to read a configuration.
+
+Reading validates the structure and source settings without retrieving catalogue data.
+
+### Required structure
+
+- `schema_version` must be the string `"1.0.0"`.
+- `catalogues` contains at least one named catalogue.
+- Each catalogue requires `source` and `tables`; an optional `label` names it for consumers.
+- `source.url` identifies an existing local directory or an HTTP(S) catalogue URL.
+- `tables` contains at least one table ID, each with at least one named lookup column.
+- Every lookup declares `matching: exact` or `matching: name`, plus the boolean `ignore_case`.
+
+Table IDs and lookup names are exact declarations; lookup names identify actual columns.
+
+Each source directory contains `catalogue.yaml`, `catalogue.csv` and the CSV files listed in that catalogue.
+
+### Optional source settings
+
+| Field             | Default                | Meaning                                           |
+|-------------------|------------------------|---------------------------------------------------|
+| `cache`           | Session temporary path | Set a path explicitly to reuse files across runs. |
+| `timeout`         | `60`                   | Positive request timeout in seconds.              |
+| `max_connections` | `4`                    | Positive whole-number limit for CSV downloads.    |
+| `user`            | Omitted                | User name for HTTPS Basic authentication.         |
+| `password`        | Omitted                | Password, usually supplied through `!env`.        |
+
+- Relative source and cache paths resolve from the configuration file's directory.
+- Omitting `cache` gives each source a temporary path for the current R session.
+- Supply `user` and `password` together for HTTPS Basic authentication.
+- `url`, `cache`, `user` and `password` accept `!env VARIABLE`; it names an environment variable.
+- With `prompt = TRUE`, the reader can securely request a missing environment password.
+- A catalogue's omitted `label` defaults to its identifier when lookups are resolved.
+
+See [private catalogue authentication](references.html#authenticate-a-private-registry-source) for the workflow.
+
+### Survey reference configuration
+
+This is the target configuration used by the survey examples.
+
+```{r resources-reference-yaml, echo=FALSE, results='asis'}
+# Display the bundled reference configuration without copying it into the documentation source.
+cat("```yaml\n", paste(readLines(file.path(resources_directory, "examples", "survey", "references.yaml")),
+  collapse = "\n"), "\n```\n", sep = "")
+```
+
+## Mapping configuration schema
+
+`mapping-1.0.0.yaml` defines the `form.references/mapping-schema/1` dialect.
+
+Use `mapping_schema()` to inspect it and `read_mapping_configuration()` to read a mapping.
+
+The reader validates structure, resolves lookup defaults and checks duplicate alternative selections.
+
+It does not retrieve catalogue data, load reference configurations or open correspondence CSVs.
+
+### Required structure
+
+- `schema_version` must be the string `"1.0.0"`.
+- `catalogues` requires both `source` and `target`, each with `configuration` and `catalogue` names.
+- `mappings` contains at least one target table ID.
+- Each target declares one correspondence object or a nonempty list of alternatives.
+- Every correspondence requires `source.table`.
+
+The schema's additional building blocks describe those alternatives:
+
+- `one_of` requires exactly one structural alternative.
+- `sequence` describes an unnamed list whose entries are checked through `items`.
+- `mutually_exclusive` forbids fields together; dotted paths address nested properties.
+
+### Select the two catalogues
+
+- `configuration` names a reference configuration supplied by the caller.
+- `catalogue` selects an entry in that configuration's `catalogues` mapping.
+
+These are names, not filesystem paths. Catalogue URLs, credentials and lookup settings stay in their configurations.
+
+### Declare mappings by target table
+
+Start from the required target reference, then supply the input value with its source identity.
+
+- Each key under `mappings` is a **target catalogue table ID**.
+- `source.table` identifies the source table supplying values for that target.
+- Translation still runs **from source to target**.
+- The same source table may appear in mappings for different target tables.
+
+### Choose an alternative
+
+- Use one object when a target has a single source mapping.
+- Use a list when a target accepts several source mappings.
+- Select one alternative using the source table, effective lookups and returned property.
+
+**Alternatives are not fallbacks or a transformation chain.** Never select the first one or retry after a failed match.
+
+### Lookup defaults
+
+Each entry can override the catalogue defaults:
+
+| Setting         | Default                       | Role                                |
+|-----------------|-------------------------------|-------------------------------------|
+| `source.lookup` | `catalogues.source.lookup`    | Identify the source input column.   |
+| `lookup`        | `catalogues.target.lookup`    | Select the target lookup column.    |
+| `property`      | The effective target `lookup` | Select the target column to return. |
+
+Both effective lookups must be declared, either in the entry or through the catalogue defaults.
+
+Two rules determine where the correspondence comes from:
+
+- `source.property` and `file` are optional and mutually exclusive; there is no `mode` property.
+- When the source property equals its lookup, omit `source.property` and use the input unchanged.
+
+That shortcut performs no source lookup and does not resolve source aliases.
+
+### Survey mapping configuration
+
+The station entry uses a CSV; the observer entries show source-property and unchanged-input correspondences.
+
+```{r resources-mapping-yaml, echo=FALSE, results='asis'}
+# Display the mapping used by the runnable catalogue mapping guide.
+cat("```yaml\n", paste(readLines(file.path(resources_directory, "examples", "survey", "mapping.yaml")),
+  collapse = "\n"), "\n```\n", sep = "")
+```
+
+### Correspondence files
+
+- `file` selects a local CSV with exactly two columns: `source_value` and `target_value`.
+- Relative paths resolve from the directory containing `mapping.yaml`.
+- Both columns are read as text, preserving leading zeros and literal values.
+- Empty or missing values in either column are invalid correspondence data.
+- File existence and CSV contents are checked during preparation, separately from YAML structure.
+
+The survey correspondence file deliberately includes repeated, conflicting and unmatched values.
+
+```{r resources-correspondence-csv, echo=FALSE, results='asis'}
+# Display the station correspondence file supplied with the survey example.
+cat("```csv\n", paste(readLines(file.path(resources_directory, "examples", "survey", "correspondences", "stations.csv")),
+  collapse = "\n"), "\n```\n", sep = "")
+```
+
+See [Catalogue mapping](mapping.html) for matching order, resolution outcomes and provenance.
+
+## Example downloads
+
+Every file below is included in the complete archive and in the installed package.
+
+### Survey configurations
+
+Directory: `examples/survey/`.
+
+```{r resources-survey, echo=FALSE, results='asis'}
+# List the survey configurations, mapping and usage notes.
+resource_table("examples/survey")
+```
+
+### Mapping correspondence CSV
+
+Directory: `examples/survey/correspondences/`.
+
+```{r resources-correspondences, echo=FALSE, results='asis'}
+# Describe the station file as a correspondence rather than a reference table.
+resource_table("examples/survey/correspondences",
+  c("stations.csv" = "Explicit source station IDs and target station codes."))
+```
+
+### Source code lists
+
+Directory: `examples/survey/catalogue-source/code_lists/`.
+
+These records use technical identifiers; observer names allow rebound to the target name lookup.
+
+```{r resources-source-catalogue, echo=FALSE, results='asis'}
+# List the complete source catalogue, including metadata and lookup aliases.
+resource_table("examples/survey/catalogue-source/code_lists")
+```
+
+### Target code lists
+
+Directory: `examples/survey/catalogue/code_lists/`.
+
+These tables contain the station and observer codes expected by the survey form model.
+
+```{r resources-target-catalogue, echo=FALSE, results='asis'}
+# List the complete target code-list catalogue.
+resource_table("examples/survey/catalogue/code_lists")
+```
+
+### Contact registry
+
+Directory: `examples/survey/catalogue/registries/`.
+
+```{r resources-registry, echo=FALSE, results='asis'}
+# List the contact registry used by the reference preparation examples.
+resource_table("examples/survey/catalogue/registries")
+```
+
+### Private source template and overview
+
+Directory: `examples/`.
+
+The private-source template needs your catalogue URLs and user name before use.
+
+```{r resources-private-template, echo=FALSE, results='asis'}
+# List the private HTTPS template and overview of the bundled examples.
+resource_table("examples")
+```
+
+The survey form model itself is supplied by `form.model`; [Getting started](references.html) shows how to load it.
+
+## Use the published catalogues
+
+The same catalogue files can be retrieved directly from the website.
+
+```{r resources-online, eval=FALSE}
+# Load the catalogue retrieval functions.
+library(form.references)
+# Choose a temporary cache for these downloads.
+resources_cache_directory <- tempfile("survey-resources-")
+# Configure the published target code lists.
+reference_source_configuration <- reference_source(
+  "https://ultreia-io.github.io/form.references/examples/survey/catalogue/code_lists/", resources_cache_directory)
+# Retrieve the station and observer tables, verifying their checksums.
+reference_values <- get_reference_tables(c("observers", "stations"), reference_source_configuration)
+# Configure the published contact registry.
+reference_registry_source <- reference_source(
+  "https://ultreia-io.github.io/form.references/examples/survey/catalogue/registries/", resources_cache_directory)
+# Retrieve and verify the contact table.
+reference_registry_tables <- get_reference_tables("contacts", reference_registry_source)
+# Remove the temporary files created by this example.
+unlink(resources_cache_directory, recursive = TRUE)
+```

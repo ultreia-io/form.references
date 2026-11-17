@@ -3,18 +3,22 @@ template:
   bootstrap: 5
   light-switch: true
 reference:
+  - title: S3 classes
+    contents: [reference_configuration-class, reference_source-class, reference_index-class, mapping_configuration-class, mapping_references-class, reference_env-class]
   - title: Source configuration
     contents: [reference_schema, read_reference_configuration, reference_source, print.reference_source]
   - title: Catalogue tables
     contents: [read_reference_catalogue, get_reference_tables, prepare_model_references]
   - title: Shared lookups
     contents: [resolve_reference_lookups, reference_index, reference_match_rows, normalized_name_key]
+  - title: Catalogue mappings
+    contents: [mapping_schema, read_mapping_configuration, resolve_mapping_lookups, prepare_mapping_references, map_reference_values]
   - title: Package
     contents: [form.references-package]
 articles:
   - title: Guides
     navbar: Guides
-    contents: [terminology, form.references]
+    contents: [terminology, references, mapping, resources]
 navbar:
   structure:
     left: [intro, reference, articles, news, coverage, community]
@@ -26,13 +30,17 @@ navbar:
         - text: Terminology
           href: articles/terminology.html
         - text: Getting started
-          href: articles/form.references.html
+          href: articles/references.html
+        - text: Catalogue mapping contract
+          href: articles/mapping.html
+        - text: Package resources
+          href: articles/resources.html
     coverage:
       text: Coverage
       href: https://app.codecov.io/gh/ultreia-io/form.references
     intro:
       text: Getting started
-      href: articles/form.references.html
+      href: articles/references.html
     community:
       text: Community
       menu:
@@ -57,4 +65,4 @@ footer:
   components:
     company: "[ultreia.io](https://ultreia.io/)"
     copyright: "· © 2026"
-    license: "· [License: LGPL-2.1](LICENSE)"
+    license: "· [License: LGPL-2.1](/form.references/LICENSE-text.html)"

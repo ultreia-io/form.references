@@ -12,7 +12,7 @@
 
 ## About this project
 
-> `form.references` supplies reference data and shared lookup operations to consumers of form models.
+> `form.references` gives consumers a shared way to retrieve reference data and find matching records.
 
 Read the [Terminology](https://ultreia-io.github.io/form.references/articles/terminology.html) for the concepts used throughout this documentation.
 
@@ -20,9 +20,32 @@ A reference catalogue is a collection of tables containing values that form cons
 
 A form model identifies the catalogue, table and lookup used by each field that needs reference data.
 
-`form.references` retrieves the required tables and matches text values using aliases and configurable case sensitivity.
+Catalogue locations and lookup rules are configured once, rather than implemented separately by each consumer.
 
 Exporters, importers and validators can share this configuration and reuse the same reference data.
+
+## Features
+
+**Catalogue configuration and retrieval**
+
+- Configure catalogue sources and lookup rules in YAML.
+- Retrieve catalogues from local directories or HTTP sources, including authenticated sources.
+- Verify checksums and cache downloaded data for offline reuse.
+
+**Reference preparation and matching**
+
+- Prepare the tables and lookups required by a form model.
+- Match text values using exact matching, case settings and name matching.
+- Apply catalogue-owned aliases automatically.
+- Return canonical values and complete records, preserving multiple matches.
+- Inspect lookup settings, aliases and source provenance.
+
+**Catalogue mapping**
+
+- Declare correspondences between two independently configured catalogues in versioned YAML.
+- Map values through a correspondence CSV, a source record's property or an unchanged input.
+- Reuse catalogue aliases, case settings and normalized-name matching.
+- Resolve encountered values, preserving ambiguities, unresolved statuses and provenance.
 
 ## Related packages
 
@@ -59,9 +82,13 @@ pak::pak("ultreia-io/form.references@develop")
 
 ## Getting started
 
-Follow the [Getting started guide](https://ultreia-io.github.io/form.references/articles/form.references.html) for the runnable survey example and downloadable files.
+Follow [Getting started][getting-started] for the runnable survey example.
+
+[getting-started]: https://ultreia-io.github.io/form.references/articles/references.html
 
 ## Guides
 
+- [Catalogue mapping](https://ultreia-io.github.io/form.references/articles/mapping.html)
+- [Package resources](https://ultreia-io.github.io/form.references/articles/resources.html): schemas and example downloads.
 - [API reference](https://ultreia-io.github.io/form.references/reference/index.html)
 - [Contributing](https://ultreia-io.github.io/form.references/CONTRIBUTING.html) and [maintenance](https://ultreia-io.github.io/form.references/DEVELOPMENT.html)
