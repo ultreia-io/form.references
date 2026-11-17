@@ -28,3 +28,53 @@ vignette: >
 | Reference cache        | Local files retained after catalogue and checksum verification.                         |
 | Reference snapshot     | Reference data and lookup settings retained for consumers to reuse.                     |
 | Checksum               | A content fingerprint used to detect whether a downloaded file matches its catalogue.   |
+
+## Catalogue mapping
+
+| Term                  | Meaning                                                                             |
+|-----------------------|-------------------------------------------------------------------------------------|
+| Mapping               | A correspondence between source and target reference tables.                        |
+| Mapping configuration | The versioned YAML declaring the two catalogues and their mappings.                 |
+| Source catalogue      | The catalogue whose reference values are being translated.                          |
+| Target catalogue      | The catalogue in which the required reference values are resolved.                  |
+| Correspondence        | The link from a source value to a value submitted to the target lookup.             |
+| Correspondence file   | A CSV containing explicit `source_value` and `target_value` pairs.                  |
+| DIRECT mapping        | A target lookup using the input or its CSV correspondence, without a source lookup. |
+| REBOUND mapping       | A source lookup that reads another property and submits it to the target lookup.    |
+| Mapping alternative   | One selectable correspondence for a target table; alternatives are not fallbacks.   |
+| Mapping references    | Loaded catalogue data, lookup indexes and CSV correspondences used for resolution.  |
+| Mapping result        | One row per input, containing its target value, status and resolution stage.        |
+| Unresolved result     | A missing input, missing source record or property, absent match, or ambiguity.     |
+| Provenance            | The selected mapping, configuration checksum, catalogue revisions and CSV checksum. |
+
+Mappings are keyed by the target table; values are translated from source to target.
+
+Catalogue aliases belong to individual lookups; correspondences belong to the mapping between catalogues.
+
+DIRECT and REBOUND describe the resolution behaviour; the YAML has no `mode` field.
+
+See the [mapping guide](mapping.html) for the configuration and runnable survey examples.
+
+## R object classes
+
+The package defines five classes used by its public API and one internal YAML marker.
+
+| S3 class                  | Role                                                        |
+|---------------------------|-------------------------------------------------------------|
+| `reference_configuration` | Catalogue sources and declared lookup policies.             |
+| `reference_source`        | Retrieval settings, authentication and cache location.      |
+| `reference_index`         | Reference rows and reusable matching indexes.               |
+| `mapping_configuration`   | Validated correspondences between two catalogues.           |
+| `mapping_references`      | Prepared catalogue indexes, correspondences and provenance. |
+| `reference_env`           | Internal marker for a YAML `!env` value, consumed on read.  |
+
+Each class has a help page named `<class>-class`, describing its creation, structure and use.
+
+```{r class-help, eval=FALSE}
+# Open the help page for prepared mapping reference objects.
+help("mapping_references-class", package = "form.references")
+```
+
+Only `reference_source` defines a class-specific S3 method: `print.reference_source()`.
+
+`map_reference_values()` returns an ordinary data frame with provenance, without a package-specific result class.

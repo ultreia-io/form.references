@@ -1,0 +1,2 @@
+table,column,alias,canonical
+contacts,email,old-alice@example.org,alice@example.org

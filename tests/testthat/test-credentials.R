@@ -62,3 +62,26 @@ test_that("password prompts handle success, cancellation and empty replies", {
     }
   })
 })
+
+test_that("Basic authentication rejects ambiguous usernames without exposing credentials", {
+  configuration_path <- withr::local_tempfile(fileext = ".yaml")
+  writeLines(c('schema_version: "1.0.0"', 'catalogues:', '  private:',
+    '    source:', '      url: https://example.org/', '      user: reader:other',
+    '      password: private-test-secret', '    tables:', '      contacts:',
+    '        email: {matching: exact, ignore_case: true}'), configuration_path)
+  error <- tryCatch(read_reference_configuration(configuration_path), error = identity)
+  expect_s3_class(error, "error")
+  expect_match(conditionMessage(error), "user must not contain a colon")
+  expect_false(grepl("private-test-secret", conditionMessage(error), fixed = TRUE))
+})
+
+test_that("missing prompt support reports the required package without attempting input", {
+  withr::local_envvar(c(FORM_REFERENCE_PROMPT_PASSWORD = NA))
+  original_require_namespace <- base::requireNamespace
+  local_mocked_bindings(requireNamespace = function(package, ...) {
+    if (identical(package, "askpass")) return(FALSE)
+    original_require_namespace(package, ...)
+  }, .package = "base")
+  expect_error(reference_environment_value("FORM_REFERENCE_PROMPT_PASSWORD", prompt = TRUE),
+    "Install askpass to use the secure password prompt", fixed = TRUE)
+})

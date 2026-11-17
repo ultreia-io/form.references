@@ -1,0 +1,77 @@
+# Package-specific catalogue-mapping contract, not JSON Schema.
+# Independent of schema/references-1.0.0.yaml and its configuration reader.
+# Mapping nodes have unique, nonempty string keys; undeclared properties are rejected.
+# one_of accepts exactly one alternative; sequence is an ordered, unnamed list.
+# Keys under mappings identify target catalogue tables.
+# mutually_exclusive forbids the listed property paths from appearing together.
+# Dotted paths address nested properties relative to the current mapping node.
+# Lookup inheritance is documented in vignettes/resources.Rmd; resolution is documented in vignettes/mapping.Rmd.
+dialect: form.references/mapping-schema/1
+contract_version: "1.0.0"
+root: configuration
+definitions:
+  # Identifiers and file paths must be nonempty strings; YAML expressions are never evaluated.
+  text:
+    type: string
+    min_length: 1
+  # This version describes the mapping format, independently of catalogue and CSV revisions.
+  configuration:
+    type: mapping
+    required: [schema_version, catalogues, mappings]
+    properties:
+      schema_version: {type: string, enum: ['1.0.0']}
+      # Both sides select existing reference configurations; no catalogue definitions are embedded here.
+      catalogues:
+        type: mapping
+        required: [source, target]
+        properties:
+          source: {ref: catalogue_selection}
+          target: {ref: catalogue_selection}
+      # Each key is the target table whose reference values the consumer needs.
+      mappings:
+        type: mapping
+        min_items: 1
+        values: {ref: table_mappings}
+  # configuration is a caller-supplied name; catalogue selects one of its named catalogues.
+  # These identifiers are not paths to YAML files.
+  catalogue_selection:
+    type: mapping
+    required: [configuration, catalogue]
+    properties:
+      configuration: {ref: text}
+      catalogue: {ref: text}
+      # Optional default lookup column, inherited by entries on this side of the mapping.
+      lookup: {ref: text}
+  table_mappings:
+    # Accept one compact correspondence or a list of alternatives, never a fallback chain.
+    # The reader rejects duplicate selections; the caller must select one alternative unambiguously.
+    one_of:
+      - {ref: correspondence}
+      - type: sequence
+        min_items: 1
+        items: {ref: correspondence}
+  correspondence:
+    type: mapping
+    required: [source]
+    # A correspondence comes from a source property, a CSV, or the unchanged input if both are absent.
+    mutually_exclusive: [source.property, file]
+    properties:
+      source: {ref: source}
+      # Overrides catalogues.target.lookup; one of these target lookup declarations is required.
+      lookup: {ref: text}
+      # Target column to return; omission uses the effective target lookup column.
+      property: {ref: text}
+      # Local source_value,target_value CSV, relative to the mapping file's directory.
+      # Its existence and contents are checked during preparation, separately from this structure.
+      file: {ref: text}
+  source:
+    type: mapping
+    required: [table]
+    properties:
+      table: {ref: text}
+      # Overrides catalogues.source.lookup and identifies the supplied input's column.
+      # One source lookup declaration is required, even when no source rows need to be loaded.
+      lookup: {ref: text}
+      # Rebound: find the source record, read this column and submit its value to the target lookup.
+      # Without this field, CSV and unchanged-input correspondences perform no source-record lookup.
+      property: {ref: text}

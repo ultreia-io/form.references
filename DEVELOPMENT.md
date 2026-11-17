@@ -6,17 +6,21 @@ Work on `develop`. `main` contains releases. Both branches start at the initial 
 
 The files organize functions in one package namespace. You do not source each file separately.
 
-| File                        | Responsibility                                                   |
-| --------------------------- | ---------------------------------------------------------------- |
-| `configuration.R`           | Read YAML, check its schema and configure paths and credentials. |
-| `retrieval.R`               | Read catalogues, retrieve tables and manage their cache.         |
-| `lookup.R`                  | Check lookup values, build indexes and find matching rows.       |
-| `form-model.R`              | Resolve form model bindings and prepare required references.     |
-| `form.references-package.R` | Provide package-level documentation.                             |
+| File                        | Responsibility                                                            |
+|-----------------------------|---------------------------------------------------------------------------|
+| `references.R`              | Public configuration, retrieval, matching and form-model operations.      |
+| `references-internal.R`     | Internal validation, credentials, downloads, caching and lookup helpers.  |
+| `mapping.R`                 | Public mapping configuration, preparation and value resolution.           |
+| `mapping-internal.R`        | Internal mapping validation, lookup keys and correspondence-file reading. |
+| `form.references-package.R` | Package-level documentation.                                              |
+
+Each area has one public API file and one internal helper file, with sections grouping related operations.
+
+Shared helpers are defined once; mapping operations reuse the reference lookup and retrieval functions.
 
 ## Survey fixtures
 
-The example tables and catalogues are tracked under `inst/examples/survey/catalogue/`.
+The example catalogues are tracked under `inst/examples/survey/catalogue/` and `survey/catalogue-source/`.
 
 If you want to modify the example data, update the affected CSV’s version and source date in its catalogue, then run:
 
@@ -25,6 +29,10 @@ Rscript tools/update-example-catalogues.R
 ```
 
 This refreshes the checksums and publication timestamps so the modified examples remain usable.
+
+Pass catalogue directories as arguments to refresh only the changed catalogues.
+
+The survey mapping and its correspondence CSVs live beside the two reference configurations in `inst/examples/survey/`.
 
 ## Local verification
 
@@ -49,6 +57,8 @@ Archives and check output stay in `build/`.
 Review coverage gaps for missing behaviour. Check installed resources, runnable examples, and website navigation.
 
 ## Website
+
+Website builds use `pkgdown` and `zip`, declared in `Config/Needs/website`.
 
 To build only the website, run from the package root:
 

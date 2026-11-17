@@ -1,0 +1,8 @@
+source_value,target_value
+station-north,001
+station-north,001
+station-south,002
+station-legacy,OLD-STATION
+station-conflict,001
+station-conflict,002
+station-absent,999

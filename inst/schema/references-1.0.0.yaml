@@ -1,12 +1,19 @@
+# Package-specific reference-configuration contract, read by reference_schema().
+# read_reference_configuration() validates YAML with this dialect, not JSON Schema.
+# Unknown properties and duplicate or empty mapping keys are rejected.
+# Structure and source settings are checked without retrieving catalogue data.
+# See vignettes/resources.Rmd for the field descriptions and downloadable examples.
 dialect: form.references/schema/1
 contract_version: 1.0.0
 root: configuration
 definitions:
+  # Format versioning is independent of catalogue publications and table revisions.
   configuration:
     type: mapping
     required: [schema_version, catalogues]
     properties:
       schema_version: {type: string, enum: ['1.0.0']}
+      # Keys name catalogues such as code_lists or registries; at least one is required.
       catalogues:
         type: mapping
         min_items: 1
@@ -15,8 +22,10 @@ definitions:
     type: mapping
     required: [source, tables]
     properties:
+      # Consumers use the catalogue ID as its label when this field is omitted.
       label: {type: string, min_length: 1}
       source: {ref: source}
+      # Table IDs map to lookup definitions, whose keys are actual column names.
       tables:
         type: mapping
         min_items: 1
@@ -24,23 +33,31 @@ definitions:
           type: mapping
           min_items: 1
           values: {ref: lookup}
+  # Both settings are explicit in YAML; name matching adds a normalized-name fallback.
+  # Catalogue aliases are supplied by catalogue data, not by these lookup settings.
   lookup:
     type: mapping
     required: [matching, ignore_case]
     properties:
       matching: {type: string, enum: [exact, name]}
       ignore_case: {type: boolean}
+  # Source text fields accept a literal string or !env VARIABLE.
+  # The reader validates the variable name, then resolves its value without evaluating R code.
   text:
     type: string
     min_length: 1
     environment: true
   source:
     type: mapping
-    required: [url, cache]
+    required: [url]
     properties:
+      # Local directory or HTTP(S) base URL containing catalogue.yaml and catalogue.csv.
       url: {ref: text}
+      # Relative paths resolve from the configuration file; omitted caches are temporary for the R session.
       cache: {ref: text}
+      # The source constructor supplies defaults: 60 seconds and four concurrent CSV downloads.
       timeout: {type: number, exclusive_minimum: 0}
       max_connections: {type: integer, minimum: 1}
+      # The reader requires both credentials together and HTTPS; password may use !env.
       user: {ref: text}
       password: {ref: text}
