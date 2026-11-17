@@ -45,6 +45,36 @@ test_that("the schema checks the declared version", {
   }
 })
 
+test_that("configuration mappings reject empty collections and unknown settings", {
+  configuration <- example_configuration()
+  configuration$catalogues <- unname(configuration$catalogues)
+  expect_error(read_reference_configuration(configuration_yaml(configuration)), "unique nonempty names")
+  configuration$catalogues <- list()
+  expect_error(read_reference_configuration(configuration_yaml(configuration)), "requires at least 1 items")
+  configuration <- example_configuration()
+  configuration$catalogues$code_lists$tables <- list()
+  expect_error(read_reference_configuration(configuration_yaml(configuration)), "requires at least 1 items")
+  configuration <- example_configuration()
+  configuration$catalogues$code_lists$tables$stations <- list()
+  expect_error(read_reference_configuration(configuration_yaml(configuration)), "requires at least 1 items")
+  configuration <- example_configuration()
+  configuration$catalogues$code_lists$source$max_connection <- 1
+  expect_error(read_reference_configuration(configuration_yaml(configuration)), "unsupported property max_connection")
+})
+
+test_that("source settings enforce nonempty text and positive connection limits", {
+  configuration <- example_configuration()
+  configuration$catalogues$code_lists$source$url <- ""
+  expect_error(read_reference_configuration(configuration_yaml(configuration)), "source.url: must not be empty", fixed = TRUE)
+  configuration$catalogues$code_lists$source$url <- "https://example.org/"
+  configuration$catalogues$registries$source$url <- "https://example.org/"
+  configuration$catalogues$code_lists$source$max_connections <- 0
+  expect_error(read_reference_configuration(configuration_yaml(configuration)), "max_connections: must be >= 1", fixed = TRUE)
+  configuration$catalogues$code_lists$source$max_connections <- 1
+  source <- read_reference_configuration(configuration_yaml(configuration))$catalogues$code_lists$source
+  expect_identical(source$max_connections, 1L)
+})
+
 test_that("the schema loader exposes the supported contract", {
   expect_identical(reference_schema()$contract_version, "1.0.0")
   expect_identical(reference_schema("1.0.0"), reference_schema())
@@ -56,10 +86,8 @@ test_that("examples resolve relative sources and private credentials", {
   directory <- system.file("examples", package = "form.references")
   configuration <- read_reference_configuration(file.path(directory, "survey", "references.yaml"))
   expect_named(configuration$catalogues, c("code_lists", "registries"))
-  expect_identical(configuration$catalogues$code_lists$source$catalogue, "code_lists")
-  expect_identical(configuration$catalogues$registries$source$catalogue, "registries")
   expect_identical(configuration$catalogues$code_lists$source$url,
-    normalizePath(file.path(directory, "survey", "catalogue"), winslash = "/"))
+    normalizePath(file.path(directory, "survey", "catalogue", "code_lists"), winslash = "/"))
   withr::local_envvar(c(REGISTRY_PASSWORD = "example-test-password"))
   private <- read_reference_configuration(file.path(directory, "references.private.example.yaml"))
   expect_match(unname(private$catalogues$registries$source$headers), "^Basic ")
