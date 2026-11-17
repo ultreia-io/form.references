@@ -1,0 +1,4 @@
+table,column,alias,canonical
+stations,id,former-north,station-north
+observers,id,former-alice,person-alice
+observers,name,A. Example,Example Alice

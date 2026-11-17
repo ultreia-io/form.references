@@ -1,0 +1,12 @@
+schema_version: "1.0.0"
+catalogues:
+  code_lists:
+    label: Source survey code lists
+    source:
+      url: catalogue-source/code_lists/
+    tables:
+      stations:
+        id: {matching: exact, ignore_case: true}
+      observers:
+        id: {matching: exact, ignore_case: true}
+        name: {matching: name, ignore_case: true}

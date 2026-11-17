@@ -1,0 +1,7 @@
+id,name
+station-north,North station
+station-south,South station
+station-legacy,North station (former identifier)
+station-unmapped,East station
+station-conflict,Station awaiting identification
+station-absent,Retired station

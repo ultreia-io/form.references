@@ -1,0 +1,4 @@
+"domain","id","csv_path","version","updated_at","published_at","sha256"
+"catalogue","_aliases_","catalogue_aliases.csv","1.0.0","2026-11-17","2026-11-17T07:46:22Z","e3e33cdeea03151be432b3340369f0b58175b0d919d6530c38a605041d4c6b0c"
+"survey","observers","observers.csv","1.0.0","2026-11-17","2026-11-17T07:46:22Z","066cb8c9a0a444cd775bfe3351bf26ea1b6c523d7b1295c156afbfb18282c160"
+"survey","stations","stations.csv","1.0.0","2026-11-17","2026-11-17T07:46:22Z","59771544468271cb5b48e3a5d0e4a7317f8c5a085c42a91507178396e237de2f"
