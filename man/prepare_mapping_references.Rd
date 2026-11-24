@@ -8,7 +8,8 @@ prepare_mapping_references(
   mapping,
   configurations,
   targets = NULL,
-  offline = FALSE
+  offline = FALSE,
+  catalogues = NULL
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ read_reference_configuration(), keyed by the mapping's configuration names.}
 \item{targets}{Target table IDs to prepare; NULL selects every configured target.}
 
 \item{offline}{Use verified reference caches only. Correspondence CSVs are local files.}
+
+\item{catalogues}{Optional results from \code{\link[=get_reference_tables]{get_reference_tables()}}, grouped first
+by configuration name and then by catalogue name. These supply tables already in memory.}
 }
 \value{
 A \link[=mapping_references-class]{mapping_references} object retaining the selected alternatives,

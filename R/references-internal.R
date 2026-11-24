@@ -244,6 +244,20 @@ valid_reference_paths <- function(paths) {
 
 # Retrieval -----------------------------------------------------------------
 
+#' Require the selected tables in an already retrieved catalogue
+#' @param ids Required table IDs.
+#' @param catalogue Result from get_reference_tables().
+#' @param label Catalogue name for diagnostics.
+#' @return The supplied catalogue.
+#' @keywords internal
+require_reference_tables <- function(ids, catalogue, label) {
+  missing <- setdiff(ids, intersect(names(catalogue$data), catalogue$catalogue$id))
+  if (length(missing)) {
+    stop("Missing loaded tables in ", label, ": ", paste(missing, collapse = ", "), call. = FALSE)
+  }
+  catalogue
+}
+
 #' Resolve several reference CSVs, downloading missing ones concurrently
 #' @param source Reference source configuration.
 #' @param selected Catalogue rows in requested order.

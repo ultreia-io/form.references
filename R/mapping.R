@@ -198,6 +198,8 @@ resolve_mapping_lookups <- function(mapping, configurations) {
 #' @inheritParams resolve_mapping_lookups
 #' @param targets Target table IDs to prepare; NULL selects every configured target.
 #' @param offline Use verified reference caches only. Correspondence CSVs are local files.
+#' @param catalogues Optional results from [get_reference_tables()], grouped first
+#'   by configuration name and then by catalogue name. These supply tables already in memory.
 #' @return A [mapping_references-class] object retaining the selected alternatives,
 #'   shared reference indexes, correspondence tables and provenance.
 #' @details Retrieves each required table once per configuration and catalogue.
@@ -224,7 +226,7 @@ resolve_mapping_lookups <- function(mapping, configurations) {
 #'   map_reference_values(prepared, "stations", c("station-north", "station-unmapped"))[, 1:4]
 #' })
 #' @export
-prepare_mapping_references <- function(mapping, configurations, targets = NULL, offline = FALSE) {
+prepare_mapping_references <- function(mapping, configurations, targets = NULL, offline = FALSE, catalogues = NULL) {
   if (!is.logical(offline) || length(offline) != 1L || is.na(offline))
     stop("offline must be TRUE or FALSE.", call. = FALSE)
   mapping <- resolve_mapping_lookups(mapping, configurations)
@@ -247,8 +249,14 @@ prepare_mapping_references <- function(mapping, configurations, targets = NULL, 
   groups <- split(lookups, vapply(lookups, mapping_catalogue_key, character(1)))
   retrieved <- lapply(groups, function(group) {
     specification <- group[[1L]]
+    ids <- unique(vapply(group, `[[`, character(1), "table"))
+    if (!is.null(catalogues)) {
+      return(require_reference_tables(ids,
+        catalogues[[specification$configuration]][[specification$catalogue]],
+        paste(specification$configuration, specification$catalogue, sep = "/")))
+    }
     source <- configurations[[specification$configuration]]$catalogues[[specification$catalogue]]$source
-    get_reference_tables(unique(vapply(group, `[[`, character(1), "table")), source, offline = offline)
+    get_reference_tables(ids, source, offline = offline)
   })
   references <- list()
   provenance <- list()

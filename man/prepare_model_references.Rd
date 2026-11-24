@@ -4,7 +4,12 @@
 \alias{prepare_model_references}
 \title{Prepare reference values selected by a model}
 \usage{
-prepare_model_references(model, configuration, offline = FALSE)
+prepare_model_references(
+  model,
+  configuration,
+  offline = FALSE,
+  catalogues = NULL
+)
 }
 \arguments{
 \item{model}{An unresolved form model with named lookup bindings.}
@@ -12,6 +17,9 @@ prepare_model_references(model, configuration, offline = FALSE)
 \item{configuration}{Combined configuration from read_reference_configuration().}
 
 \item{offline}{Use verified cached files only; defaults to FALSE.}
+
+\item{catalogues}{Optional results from \code{\link[=get_reference_tables]{get_reference_tables()}}, named by catalogue.
+Supply these to build lookups from tables already in memory.}
 }
 \value{
 A list containing model (the resolved model) and references (named

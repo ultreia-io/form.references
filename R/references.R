@@ -491,6 +491,8 @@ resolve_reference_lookups <- function(model, configuration = NULL) {
 #' @param model An unresolved form model with named lookup bindings.
 #' @param configuration Combined configuration from read_reference_configuration().
 #' @param offline Use verified cached files only; defaults to FALSE.
+#' @param catalogues Optional results from [get_reference_tables()], named by catalogue.
+#'   Supply these to build lookups from tables already in memory.
 #' @return A list containing model (the resolved model) and references (named
 #'   indexes with values, complete rows, lookup settings and provenance).
 #'   The supplied model is unchanged.
@@ -522,7 +524,7 @@ resolve_reference_lookups <- function(model, configuration = NULL) {
 #' # Remove the temporary files created by this example.
 #' unlink(reference_cache_directory, recursive = TRUE)
 #' @export
-prepare_model_references <- function(model, configuration, offline = FALSE) {
+prepare_model_references <- function(model, configuration, offline = FALSE, catalogues = NULL) {
   if (!is.logical(offline) || length(offline) != 1L || is.na(offline))
     stop("offline must be TRUE or FALSE", call. = FALSE)
   resolved_model <- resolve_reference_lookups(model, configuration)
@@ -531,16 +533,17 @@ prepare_model_references <- function(model, configuration, offline = FALSE) {
   groups <- unique(vapply(lookups, `[[`, character(1), "catalogue"))
   missing <- setdiff(groups, names(sources))
   if (length(missing)) stop("Missing reference sources: ", paste(missing, collapse = ", "), call. = FALSE)
-  catalogues <- stats::setNames(lapply(groups, function(group) {
+  prepared_catalogues <- stats::setNames(lapply(groups, function(group) {
     selected <- Filter(function(lookup) identical(lookup$catalogue, group), lookups)
     ids <- unique(vapply(selected, `[[`, character(1), "table"))
-    get_reference_tables(ids, sources[[group]], offline = offline)
+    if (is.null(catalogues)) get_reference_tables(ids, sources[[group]], offline = offline)
+    else require_reference_tables(ids, catalogues[[group]], group)
   }), groups)
   references <- list()
   provenance <- list()
   for (id in names(lookups)) {
     lookup <- lookups[[id]]
-    catalogue <- catalogues[[lookup$catalogue]]
+    catalogue <- prepared_catalogues[[lookup$catalogue]]
     data <- catalogue$data[[lookup$table]]
     if (!lookup$column %in% names(data))
       stop("Missing lookup column: ", lookup$table, ".", lookup$column, call. = FALSE)
