@@ -46,7 +46,9 @@ This generates documentation, runs tests, builds and checks the archive with `--
 
 Local and CI checks share the CRAN mirror settings in `tools/check.Renviron`. All CRAN checks remain enabled.
 
-The **Build** workflow measures coverage with `covr` on Linux after successful checks and uploads it to Codecov.
+**Build** runs one Linux R-release check for routine changes and uploads coverage to Codecov.
+
+Run **Actions → Check All Platforms** for Linux with R release and R-devel, macOS, and Windows.
 
 The README coverage badges link to the Codecov report.
 
@@ -82,18 +84,26 @@ pkgdown::build_site()
 
    1. Open **Actions → Start Release**.
    2. Click **Run workflow**, select `develop`, then click **Run workflow** to confirm.
-   3. Open the release PR created by the workflow.
+   3. The workflow checks the selected commit on all four environments and saves the checked Linux archive.
+   4. After all four checks pass, it opens the release PR at the checked commit.
 
 3. **Merge the release PR:**
 
-   1. **Wait for the checks:** all checks on the release PR must be green.
-   2. **Merge:** click **Merge pull request**, then **Confirm merge**.
-   3. Merging automatically starts the **Publish Release** workflow.
+   1. Review the release PR and merge it. Its checks already passed in **Start Release**.
+   2. Merging starts **Publish Release**, which verifies that the merged files match the checked candidate.
 
-The **Publish Release** workflow:
+**Publish Release** publishes the checked archive and checksum, then deploys the documentation.
 
-1. Publishes the package archive, checksum and documentation.
-2. **Submits the same archive to CRAN**.
+If the merge changes the checked files, update `develop` and rerun **Start Release** before merging a new PR.
+
+### Enable CRAN submission
+
+The **Submit to CRAN** job is skipped by default. Enable it when the package's required dependencies are on CRAN.
+
+1. Open the repository's **Settings → Secrets and variables → Actions → Variables**.
+2. Click **New repository variable** and set `SUBMIT_TO_CRAN` to `true`.
+
+To disable submission, remove the variable or set it to `false`.
 
 ## Manual CRAN submission
 
