@@ -87,6 +87,8 @@ reference_schema <- function(version = "1.0.0") {
 #' @param prompt Securely prompt for missing passwords; defaults to FALSE.
 #' @return A [reference_configuration-class] object containing named catalogues,
 #'   each with a [reference_source-class] object and table lookup definitions. No data is downloaded.
+#' @param sources_path Optional YAML mapping catalogue names to source overrides.
+#'   Relative override paths resolve from this file.
 #' @details The packaged schema/references-1.0.0.yaml schema checks the required
 #'   schema_version. Each catalogue declares source and tables;
 #'   each source directory contains catalogue.yaml and catalogue.csv;
@@ -106,18 +108,29 @@ reference_schema <- function(version = "1.0.0") {
 #' # Inspect the configured catalogue names.
 #' names(reference_configuration$catalogues)
 #' @export
-read_reference_configuration <- function(path, prompt = FALSE) {
+read_reference_configuration <- function(path, prompt = FALSE, sources_path = NULL) {
   scalar_text(path, "path")
   if (!is.logical(prompt) || length(prompt) != 1L || is.na(prompt))
     stop("prompt must be TRUE or FALSE.", call. = FALSE)
-  configuration <- yaml::read_yaml(path, eval.expr = FALSE,
-    handlers = list(seq = as.list,
-      env = function(variable) structure(variable, class = "reference_env")))
+  handlers <- list(seq = as.list,
+    env = function(variable) structure(variable, class = "reference_env"))
+  configuration <- yaml::read_yaml(path, eval.expr = FALSE, handlers = handlers)
   check_reference_configuration(configuration)
   directory <- dirname(normalizePath(path, winslash = "/", mustWork = TRUE))
+  overrides <- list()
+  if (!is.null(sources_path)) {
+    scalar_text(sources_path, "sources_path")
+    overrides <- yaml::read_yaml(sources_path, eval.expr = FALSE, handlers = handlers)
+    configuration <- apply_reference_sources(configuration, overrides)
+    check_reference_configuration(configuration)
+    sources_directory <- dirname(normalizePath(sources_path, winslash = "/", mustWork = TRUE))
+  }
   for (name in names(configuration$catalogues)) {
+    directories <- c(url = directory, cache = directory)
+    overridden_paths <- intersect(names(overrides[[name]]), names(directories))
+    if (length(overridden_paths)) directories[overridden_paths] <- sources_directory
     configuration$catalogues[[name]]$source <- reference_source_configuration(
-      configuration$catalogues[[name]]$source, prompt, directory)
+      configuration$catalogues[[name]]$source, prompt, directories)
   }
   class(configuration) <- "reference_configuration"
   configuration

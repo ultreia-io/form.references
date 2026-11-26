@@ -82,18 +82,41 @@ check_reference_configuration <- function(configuration) {
   check(configuration, schema$definitions[[root]], "$")
 }
 
-reference_source_configuration <- function(config, prompt, directory) {
+#' Apply source overrides to a reference configuration
+#' @param configuration Parsed reference configuration.
+#' @param overrides Source settings grouped by catalogue name.
+#' @return The configuration with the source overrides applied.
+#' @keywords internal
+apply_reference_sources <- function(configuration, overrides) {
+  if (!is.list(overrides) || (length(overrides) && is.null(names(overrides))) ||
+      anyDuplicated(names(overrides)) ||
+      any(!names(overrides) %in% names(configuration$catalogues))) {
+    stop("Source overrides must be keyed by known catalogue names.", call. = FALSE)
+  }
+  for (name in names(overrides)) {
+    settings <- overrides[[name]]
+    if (!is.list(settings) || is.null(names(settings)) || anyDuplicated(names(settings))) {
+      stop(name, ": expected source settings with unique names.", call. = FALSE)
+    }
+    source <- configuration$catalogues[[name]]$source
+    source[names(settings)] <- settings
+    configuration$catalogues[[name]]$source <- source
+  }
+  configuration
+}
+
+reference_source_configuration <- function(config, prompt, directories) {
   for (name in names(config)) {
     if (inherits(config[[name]], "reference_env"))
       config[[name]] <- reference_environment_value(
         unclass(config[[name]]), prompt = prompt && name == "password")
   }
-  if (!is.null(directory)) {
+  if (!is.null(directories)) {
     for (name in intersect(c("url", "cache"), names(config))) {
       scalar_text(config[[name]], name)
       if (name == "url" && grepl("^https?://", config[[name]])) next
       path <- path.expand(config[[name]])
-      if (!grepl("^(/|[A-Za-z]:[/\\\\])", path)) path <- file.path(directory, path)
+      if (!grepl("^(/|[A-Za-z]:[/\\\\])", path)) path <- file.path(directories[[name]], path)
       config[[name]] <- path
     }
   }

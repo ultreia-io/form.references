@@ -4,12 +4,15 @@
 \alias{read_reference_configuration}
 \title{Read catalogue sources and lookup definitions}
 \usage{
-read_reference_configuration(path, prompt = FALSE)
+read_reference_configuration(path, prompt = FALSE, sources_path = NULL)
 }
 \arguments{
 \item{path}{YAML configuration path.}
 
 \item{prompt}{Securely prompt for missing passwords; defaults to FALSE.}
+
+\item{sources_path}{Optional YAML mapping catalogue names to source overrides.
+Relative override paths resolve from this file.}
 }
 \value{
 A \link[=reference_configuration-class]{reference_configuration} object containing named catalogues,
